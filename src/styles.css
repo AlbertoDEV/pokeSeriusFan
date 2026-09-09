@@ -388,7 +388,7 @@ body {
     flex-direction: column;
     align-items: center;
     position: relative;
-    transition: all 0.25 ease;
+    transition: all 0.25s ease;
     overflow: hidden;
     cursor: default;
 }
