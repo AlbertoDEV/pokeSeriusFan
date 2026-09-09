@@ -348,13 +348,14 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.style.setProperty('--type-color', typeInfo.color);
             btn.style.setProperty('--type-text-bg', typeInfo.textBg);
 
-            const dot = document.createElement('span');
-            dot.className = 'type-btn-dot';
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'type-icon-wrapper';
+            iconSpan.innerHTML = typeInfo.icon || '';
 
             const text = document.createElement('span');
             text.textContent = typeInfo.name;
 
-            btn.appendChild(dot);
+            btn.appendChild(iconSpan);
             btn.appendChild(text);
 
             btn.addEventListener('click', () => handleTypeClick(typeKey));
@@ -431,8 +432,14 @@ document.addEventListener('DOMContentLoaded', () => {
         badge.className = 'type-badge';
         badge.style.backgroundColor = typeInfo.color;
 
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'type-badge-icon';
+        iconSpan.innerHTML = typeInfo.icon || '';
+
         const text = document.createElement('span');
         text.textContent = typeInfo.name;
+
+        badge.appendChild(iconSpan);
         badge.appendChild(text);
 
         if (removable) {
