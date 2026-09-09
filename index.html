@@ -18,8 +18,9 @@
         <nav class="nav-links">
             <button class="nav-btn" data-tab="home">Inicio</button>
             <button class="nav-btn active" data-tab="pokedex">Pokédex</button>
-            <button class="nav-btn" data-tab="type-chart">
-                Tabla de Tipos
+            <button class="nav-btn" data-tab="type-chart">Tabla de Tipos</button>
+            <button class="nav-btn" data-tab="matchup">
+                ⚔️ Combate <span class="badge">NUEVO</span>
             </button>
         </nav>
     </header>
@@ -48,6 +49,12 @@
                         <h3>Tabla de Tipos Interactiva</h3>
                         <p>Cálculo de eficiencias de tipos, debilidades y multiplicadores de daño en tiempo real con una interfaz estilizada.</p>
                         <span class="status-tag active-tag">Disponible</span>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">⚔️</div>
+                        <h3>Análisis de Combate</h3>
+                        <p>Comparador 1v1 y 2v2 en tiempo real. Orden de velocidad, cobertura de debilidades en dobles y carga rápida desde Mi Equipo.</p>
+                        <span class="status-tag active-tag">Nuevo</span>
                     </div>
                 </div>
             </div>
@@ -136,7 +143,121 @@
                 </div>
             </div>
         </section>
+
+        <!-- Vista Análisis de Combate (Matchup Tool) -->
+        <section id="matchup-view" class="tab-view view-hidden">
+            <!-- Barra de Mi Equipo -->
+            <div class="my-team-card">
+                <div class="my-team-header">
+                    <div class="my-team-title">
+                        <span class="my-team-icon">⭐</span>
+                        <h3>Mi Equipo (<span id="team-count">0</span>/6)</h3>
+                    </div>
+                    <span class="my-team-subtext">Haz clic en un integrante para agregarlo rápidamente al combate o inspeccionarlo en la Pokédex.</span>
+                </div>
+                <div id="my-team-grid" class="my-team-grid">
+                    <!-- Se renderizan dinámicamente las 6 ranuras de Mi Equipo -->
+                </div>
+            </div>
+
+            <!-- Encabezado de Combate y Toggle de Format -->
+            <div class="matchup-header">
+                <div class="matchup-title-container">
+                    <h2 class="section-title">Análisis Táctico de Combate</h2>
+                    <p class="matchup-description">Compara los Pokémon en pista, analiza el orden de velocidad y detecta debilidades de equipo en tiempo real.</p>
+                </div>
+                <div class="matchup-format-toggle">
+                    <button id="format-1v1-btn" class="format-btn active" data-format="1v1">
+                        👤 Individual (1v1)
+                    </button>
+                    <button id="format-2v2-btn" class="format-btn" data-format="2v2">
+                        👥 Dobles (2v2)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tablero de Combate (Slots Aliados vs Rivales) -->
+            <div class="battlefield-container">
+                <!-- Lado Aliado -->
+                <div class="battle-side ally-side">
+                    <div class="side-header">
+                        <span class="side-badge ally-badge">🛡️ EQUIPO ALIADO</span>
+                    </div>
+                    <div class="slots-container">
+                        <div class="matchup-slot" id="slot-ally-1" data-slot="ally1">
+                            <!-- JS renderiza vacio o contenido -->
+                        </div>
+                        <div class="matchup-slot hidden-slot" id="slot-ally-2" data-slot="ally2">
+                            <!-- Solo en 2v2 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Divisor VS -->
+                <div class="vs-divider">
+                    <span class="vs-text">VS</span>
+                </div>
+
+                <!-- Lado Rival -->
+                <div class="battle-side rival-side">
+                    <div class="side-header">
+                        <span class="side-badge rival-badge">⚔️ EQUIPO RIVAL</span>
+                    </div>
+                    <div class="slots-container">
+                        <div class="matchup-slot" id="slot-rival-1" data-slot="rival1">
+                            <!-- JS renderiza vacio o contenido -->
+                        </div>
+                        <div class="matchup-slot hidden-slot" id="slot-rival-2" data-slot="rival2">
+                            <!-- Solo en 2v2 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de Análisis Resultados (Speed Tier, Cobertura Dobles, Eficiencia Tipos) -->
+            <div id="matchup-analysis-container" class="matchup-analysis-container">
+                <!-- Se llenará dinámicamente o mostrará estado vacío si no hay selecciones -->
+            </div>
+        </section>
     </main>
+
+    <!-- Modal de Inspección / Ficha Detallada de Pokémon -->
+    <div id="pokemon-modal" class="modal-overlay hidden" aria-hidden="true" role="dialog" aria-labelledby="modal-pokemon-name">
+        <div class="modal-card">
+            <button id="modal-close-btn" class="modal-close-btn" aria-label="Cerrar modal">&times;</button>
+            <div id="modal-body-container" class="modal-body-container">
+                <!-- Se llena dinámicamente mediante app.js -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Selector de Pokémon para Slot de Combate -->
+    <div id="select-pokemon-modal" class="modal-overlay hidden" aria-hidden="true" role="dialog">
+        <div class="modal-card select-modal-card">
+            <div class="select-modal-header">
+                <h3>Seleccionar Pokémon para Combate</h3>
+                <button id="select-modal-close-btn" class="modal-close-btn" aria-label="Cerrar modal">&times;</button>
+            </div>
+            <div class="select-modal-body">
+                <!-- Barra de búsqueda rápida -->
+                <div class="search-box modal-search-box">
+                    <span class="search-icon" aria-hidden="true">🔍</span>
+                    <input type="text" id="slot-search-input" placeholder="Buscar por nombre o número..." autocomplete="off">
+                </div>
+
+                <!-- Acceso rápido a Mi Equipo -->
+                <div id="select-modal-team-section" class="modal-team-section">
+                    <span class="modal-section-label">⭐ Cargar desde Mi Equipo:</span>
+                    <div id="select-modal-team-buttons" class="modal-team-buttons"></div>
+                </div>
+
+                <!-- Lista filtrada de Pokédex -->
+                <div id="select-modal-grid" class="modal-pokemon-grid">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
 
     <footer class="footer">
         <p>© 2025 Pokémon Champions Companion. No afiliado con Nintendo, Game Freak o The Pokémon Company.</p>

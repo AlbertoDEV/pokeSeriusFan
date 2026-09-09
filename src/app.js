@@ -12,12 +12,27 @@ document.addEventListener('DOMContentLoaded', () => {
         isLoading: false,
         error: null,
         activeTab: 'pokedex',
+        // Mi Equipo (localStorage)
+        myTeam: [], // Lista de objetos { id, name }
         // Estado de la tabla de tipos
         typeChart: {
             selectedTypes: [], // Máximo 2 tipos (p. ej. ['fire', 'flying'])
             mode: 'defense',   // 'defense' u 'offense'
             showNormalDamage: false // Control del colapsable x1
-        }
+        },
+        // Estado de Combate (Matchup Tool)
+        matchup: {
+            format: '1v1', // '1v1' o '2v2'
+            activeSlot: null, // Slot actualmente siendo editado
+            slots: {
+                ally1: null, // { id, name, details: {...} }
+                ally2: null,
+                rival1: null,
+                rival2: null
+            }
+        },
+        // Caché de detalles cargados de PokéAPI para no repetir peticiones
+        pokemonCache: {}
     };
 
     // Referencias al DOM
@@ -26,7 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
         views: {
             home: document.getElementById('home-view'),
             pokedex: document.getElementById('pokedex-view'),
-            'type-chart': document.getElementById('type-chart-view')
+            'type-chart': document.getElementById('type-chart-view'),
+            matchup: document.getElementById('matchup-view')
         },
         pokedexSearch: document.getElementById('pokedex-search'),
         pokedexCount: document.getElementById('pokedex-count'),
@@ -41,7 +57,30 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTypesBtn: document.getElementById('clear-types-btn'),
         modeDefenseBtn: document.getElementById('mode-defense-btn'),
         modeOffenseBtn: document.getElementById('mode-offense-btn'),
-        typeResultsContainer: document.getElementById('type-results-container')
+        typeResultsContainer: document.getElementById('type-results-container'),
+        // Elementos de Mi Equipo
+        teamCount: document.getElementById('team-count'),
+        myTeamGrid: document.getElementById('my-team-grid'),
+        // Modal Inspección
+        pokemonModal: document.getElementById('pokemon-modal'),
+        modalCloseBtn: document.getElementById('modal-close-btn'),
+        modalBodyContainer: document.getElementById('modal-body-container'),
+        // Matchup Tool
+        format1v1Btn: document.getElementById('format-1v1-btn'),
+        format2v2Btn: document.getElementById('format-2v2-btn'),
+        slots: {
+            ally1: document.getElementById('slot-ally-1'),
+            ally2: document.getElementById('slot-ally-2'),
+            rival1: document.getElementById('slot-rival-1'),
+            rival2: document.getElementById('slot-rival-2')
+        },
+        matchupAnalysisContainer: document.getElementById('matchup-analysis-container'),
+        // Modal Selector de Slot
+        selectPokemonModal: document.getElementById('select-pokemon-modal'),
+        selectModalCloseBtn: document.getElementById('select-modal-close-btn'),
+        slotSearchInput: document.getElementById('slot-search-input'),
+        selectModalTeamButtons: document.getElementById('select-modal-team-buttons'),
+        selectModalGrid: document.getElementById('select-modal-grid')
     };
 
     /**
@@ -72,7 +111,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!name) return '';
         let formatted = name.toLowerCase().trim();
 
-        // Mappings específicos para casos especiales de pokemondb
         const specialCases = {
             'nidoran-f': 'nidoran-f',
             'nidoran-m': 'nidoran-m',
@@ -98,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return specialCases[formatted];
         }
 
-        // Para formas base que PokéAPI nombra con sufijos (ej. deoxys-normal -> deoxys)
         const suffixCleanups = [
             '-normal', '-plant', '-altered', '-land', '-red-striped',
             '-standard', '-incarnate', '-ordinary', '-aria', '-male',
@@ -128,16 +165,117 @@ document.addEventListener('DOMContentLoaded', () => {
         return `https://img.pokemondb.net/sprites/home/normal/${formattedName}.png`;
     }
 
-    /**
-     * Alterna la visibilidad entre las pestañas
-     * @param {string} targetTab
-     */
+    /* ==========================================================================
+       Persistencia Local: Mi Equipo
+       ========================================================================== */
+
+    function loadMyTeamFromStorage() {
+        try {
+            const stored = localStorage.getItem('pkmn_champions_my_team');
+            if (stored) {
+                state.myTeam = JSON.parse(stored);
+            }
+        } catch (e) {
+            console.error('Error al cargar Mi Equipo desde localStorage:', e);
+            state.myTeam = [];
+        }
+        renderMyTeamUI();
+    }
+
+    function saveMyTeamToStorage() {
+        try {
+            localStorage.setItem('pkmn_champions_my_team', JSON.stringify(state.myTeam));
+        } catch (e) {
+            console.error('Error al guardar Mi Equipo en localStorage:', e);
+        }
+        renderMyTeamUI();
+    }
+
+    function isInMyTeam(pokemonId) {
+        return state.myTeam.some(p => p.id === pokemonId);
+    }
+
+    function addToMyTeam(pokemon) {
+        if (state.myTeam.length >= 6) {
+            alert('¡Tu equipo ya tiene el máximo de 6 Pokémon!');
+            return false;
+        }
+        if (!isInMyTeam(pokemon.id)) {
+            state.myTeam.push({ id: pokemon.id, name: pokemon.name });
+            saveMyTeamToStorage();
+            return true;
+        }
+        return false;
+    }
+
+    function removeFromMyTeam(pokemonId) {
+        state.myTeam = state.myTeam.filter(p => p.id !== pokemonId);
+        saveMyTeamToStorage();
+    }
+
+    function renderMyTeamUI() {
+        if (elements.teamCount) {
+            elements.teamCount.textContent = state.myTeam.length;
+        }
+
+        if (!elements.myTeamGrid) return;
+
+        elements.myTeamGrid.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+
+        for (let i = 0; i < 6; i++) {
+            const teamMember = state.myTeam[i];
+            const slotCard = document.createElement('div');
+            slotCard.className = `team-slot-card ${teamMember ? 'filled' : ''}`;
+
+            if (teamMember) {
+                const img = document.createElement('img');
+                img.className = 'team-slot-img';
+                img.src = getPokemonSpriteUrl(teamMember.name);
+                img.alt = capitalize(teamMember.name);
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'team-slot-name';
+                nameSpan.textContent = capitalize(teamMember.name);
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'team-slot-remove';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.title = `Quitar a ${capitalize(teamMember.name)}`;
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    removeFromMyTeam(teamMember.id);
+                });
+
+                slotCard.appendChild(img);
+                slotCard.appendChild(nameSpan);
+                slotCard.appendChild(removeBtn);
+
+                slotCard.addEventListener('click', () => {
+                    openPokemonModal(teamMember.id, teamMember.name);
+                });
+            } else {
+                const emptyIcon = document.createElement('span');
+                emptyIcon.className = 'team-slot-empty-icon';
+                emptyIcon.textContent = '+';
+                slotCard.appendChild(emptyIcon);
+            }
+
+            fragment.appendChild(slotCard);
+        }
+
+        elements.myTeamGrid.appendChild(fragment);
+    }
+
+    /* ==========================================================================
+       Navegación entre Pestañas
+       ========================================================================== */
+
     function switchTab(targetTab) {
         if (!elements.views[targetTab]) return;
 
         state.activeTab = targetTab;
 
-        // Actualizar botones del nav
         elements.navButtons.forEach(btn => {
             const btnTab = btn.getAttribute('data-tab');
             if (btnTab === targetTab) {
@@ -147,7 +285,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Actualizar visibilidad de vistas
         Object.keys(elements.views).forEach(tab => {
             if (tab === targetTab) {
                 elements.views[tab].classList.remove('view-hidden');
@@ -156,15 +293,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Re-renderizar o verificar el módulo de tipos si se activa su pestaña
         if (targetTab === 'type-chart') {
             updateTypeChartUI();
+        } else if (targetTab === 'matchup') {
+            renderMatchupUI();
         }
     }
 
-    /**
-     * Inicializa los manejadores de eventos para la navegación
-     */
     function initNavigation() {
         elements.navButtons.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -174,10 +309,237 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /**
-     * Renderiza las tarjetas de los Pokémon en la cuadrícula
-     * @param {Array} list
-     */
+    /* ==========================================================================
+       Poder de Detalle y Modal de Inspección
+       ========================================================================== */
+
+    async function fetchPokemonDetails(id) {
+        if (state.pokemonCache[id]) {
+            return state.pokemonCache[id];
+        }
+
+        const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        const data = await response.json();
+
+        // Estructurar datos relevantes
+        const officialArtwork = data.sprites?.other?.['official-artwork']?.front_default ||
+                                data.sprites?.front_default ||
+                                getPokemonSpriteUrl(data.name);
+
+        const types = data.types.map(t => t.type.name);
+
+        const stats = {};
+        data.stats.forEach(s => {
+            stats[s.stat.name] = s.base_stat;
+        });
+
+        const abilities = data.abilities.map(a => ({
+            name: a.ability.name,
+            isHidden: a.is_hidden
+        }));
+
+        const details = {
+            id: data.id,
+            name: data.name,
+            officialArtwork,
+            types,
+            stats: {
+                hp: stats.hp || 0,
+                attack: stats.attack || 0,
+                defense: stats.defense || 0,
+                specialAttack: stats['special-attack'] || 0,
+                specialDefense: stats['special-defense'] || 0,
+                speed: stats.speed || 0
+            },
+            abilities
+        };
+
+        state.pokemonCache[id] = details;
+        return details;
+    }
+
+    async function openPokemonModal(id, name) {
+        elements.modalBodyContainer.innerHTML = `
+            <div class="loader-container">
+                <div class="pokeball-spinner" aria-hidden="true"></div>
+                <p class="loader-text">Obteniendo ficha técnica de ${capitalize(name)}...</p>
+            </div>
+        `;
+        elements.pokemonModal.classList.remove('hidden');
+
+        try {
+            const details = await fetchPokemonDetails(id);
+            renderPokemonModalDetails(details);
+        } catch (err) {
+            console.error('Error al cargar modal de Pokémon:', err);
+            elements.modalBodyContainer.innerHTML = `
+                <div class="error-container">
+                    <p>⚠️ No se pudieron cargar los detalles de este Pokémon.</p>
+                </div>
+            `;
+        }
+    }
+
+    function closePokemonModal() {
+        elements.pokemonModal.classList.add('hidden');
+    }
+
+    function renderPokemonModalDetails(details) {
+        const inTeam = isInMyTeam(details.id);
+
+        // Mapeo de estadísticas para visualización
+        const statConfig = [
+            { key: 'hp', label: 'HP', color: '#FF5959' },
+            { key: 'attack', label: 'Ataque', color: '#F5AC78' },
+            { key: 'defense', label: 'Defensa', color: '#FAE078' },
+            { key: 'specialAttack', label: 'Atq. Esp', color: '#9DB7F5' },
+            { key: 'specialDefense', label: 'Def. Esp', color: '#A7DB8D' },
+            { key: 'speed', label: 'Velocidad', color: '#FA92B2' }
+        ];
+
+        // Calcular perfil defensivo con types-data.js
+        const defMatchups = calculateDefenseMatchups(details.types[0], details.types[1] || null);
+
+        let html = `
+            <div class="modal-pokemon-header">
+                <div class="modal-title-box">
+                    <span class="modal-pokemon-number">${formatPokedexNumber(details.id)}</span>
+                    <h2 class="modal-pokemon-title">${capitalize(details.name)}</h2>
+                </div>
+                <button id="modal-team-toggle-btn" class="modal-action-btn ${inTeam ? 'btn-team-remove' : 'btn-team-add'}">
+                    ${inTeam ? '❌ Quitar de Mi Equipo' : '⭐ Añadir a Mi Equipo'}
+                </button>
+            </div>
+
+            <div class="modal-main-info">
+                <div class="modal-image-card">
+                    <img class="modal-official-img" src="${details.officialArtwork}" alt="${capitalize(details.name)}">
+                    <div class="modal-types-row">
+                        ${details.types.map(t => {
+                            const tInfo = POKEMON_TYPES[t];
+                            return tInfo ? `<span class="type-badge" style="background-color: ${tInfo.color}">${tInfo.name}</span>` : '';
+                        }).join('')}
+                    </div>
+                </div>
+
+                <div class="modal-stats-container">
+                    <h3 class="modal-section-title">📊 Estadísticas Base</h3>
+                    ${statConfig.map(sc => {
+                        const val = details.stats[sc.key] || 0;
+                        const pct = Math.min(100, Math.round((val / 180) * 100));
+                        return `
+                            <div class="stat-row">
+                                <span class="stat-label">${sc.label}</span>
+                                <span class="stat-val">${val}</span>
+                                <div class="stat-bar-bg">
+                                    <div class="stat-bar-fill" style="width: ${pct}%; background-color: ${sc.color}"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <h3 class="modal-section-title">✨ Habilidades Principales</h3>
+                <div class="abilities-list">
+                    ${details.abilities.map(a => `
+                        <span class="ability-tag ${a.isHidden ? 'hidden-ability' : ''}">
+                            ${capitalize(a.name.replace('-', ' '))} ${a.isHidden ? '(Oculta)' : ''}
+                        </span>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <h3 class="modal-section-title">🛡️ Perfil Defensivo</h3>
+                <div class="defensive-groups">
+                    ${defMatchups.x4.length > 0 ? `
+                        <div class="def-group">
+                            <div class="def-group-header">
+                                <span class="mult-badge mult-x4">x4</span>
+                                <span>Debilidad Extrema</span>
+                            </div>
+                            <div class="result-badges-grid">
+                                ${defMatchups.x4.map(t => `<span class="type-badge" style="background-color:${t.color}">${t.name}</span>`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${defMatchups.x2.length > 0 ? `
+                        <div class="def-group">
+                            <div class="def-group-header">
+                                <span class="mult-badge mult-x2">x2</span>
+                                <span>Debilidad</span>
+                            </div>
+                            <div class="result-badges-grid">
+                                ${defMatchups.x2.map(t => `<span class="type-badge" style="background-color:${t.color}">${t.name}</span>`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${defMatchups.x05.length > 0 ? `
+                        <div class="def-group">
+                            <div class="def-group-header">
+                                <span class="mult-badge mult-x05">x1/2</span>
+                                <span>Resistencia</span>
+                            </div>
+                            <div class="result-badges-grid">
+                                ${defMatchups.x05.map(t => `<span class="type-badge" style="background-color:${t.color}">${t.name}</span>`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${defMatchups.x025.length > 0 ? `
+                        <div class="def-group">
+                            <div class="def-group-header">
+                                <span class="mult-badge mult-x025">x1/4</span>
+                                <span>Alta Resistencia</span>
+                            </div>
+                            <div class="result-badges-grid">
+                                ${defMatchups.x025.map(t => `<span class="type-badge" style="background-color:${t.color}">${t.name}</span>`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${defMatchups.x0.length > 0 ? `
+                        <div class="def-group">
+                            <div class="def-group-header">
+                                <span class="mult-badge mult-x0">x0</span>
+                                <span>Inmunidad</span>
+                            </div>
+                            <div class="result-badges-grid">
+                                ${defMatchups.x0.map(t => `<span class="type-badge" style="background-color:${t.color}">${t.name}</span>`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+
+        elements.modalBodyContainer.innerHTML = html;
+
+        // Configurar botón de Mi Equipo dentro del modal
+        const toggleBtn = document.getElementById('modal-team-toggle-btn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
+                if (isInMyTeam(details.id)) {
+                    removeFromMyTeam(details.id);
+                } else {
+                    addToMyTeam(details);
+                }
+                renderPokemonModalDetails(details);
+            });
+        }
+    }
+
+    /* ==========================================================================
+       Renderizado de Pokédex Grid y Eventos
+       ========================================================================== */
+
     function renderPokedexGrid(list) {
         elements.pokedexGrid.innerHTML = '';
 
@@ -215,7 +577,6 @@ document.addEventListener('DOMContentLoaded', () => {
             img.alt = capitalize(pokemon.name);
             img.loading = 'lazy';
 
-            // Manejador de error de imagen (fallback)
             img.onerror = () => {
                 imgWrapper.innerHTML = '<div class="pokemon-image-fallback" title="Imagen no disponible"></div>';
             };
@@ -230,23 +591,23 @@ document.addEventListener('DOMContentLoaded', () => {
             card.appendChild(imgWrapper);
             card.appendChild(nameHeading);
 
+            // Clic en la tarjeta abre el Modal de Inspección
+            card.addEventListener('click', () => {
+                openPokemonModal(pokemon.id, pokemon.name);
+            });
+
             fragment.appendChild(card);
         });
 
         elements.pokedexGrid.appendChild(fragment);
     }
 
-    /**
-     * Aplica el filtro en tiempo real según el término ingresado por el usuario
-     * @param {string} query
-     */
     function filterPokemon(query) {
         const cleanQuery = query.toLowerCase().trim();
 
         if (!cleanQuery) {
             state.filteredPokemon = [...state.allPokemon];
         } else {
-            // Elimina '#' si el usuario busca por #0025 o similar
             const numberQuery = cleanQuery.replace(/^#+/, '');
 
             state.filteredPokemon = state.allPokemon.filter(pokemon => {
@@ -262,9 +623,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPokedexGrid(state.filteredPokemon);
     }
 
-    /**
-     * Carga el listado de Pokémon desde la PokéAPI
-     */
     async function fetchPokedex() {
         state.isLoading = true;
         state.error = null;
@@ -283,7 +641,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json();
 
-            // Extraer el ID desde la URL de cada resultado para mantener orden y números exactos
             state.allPokemon = data.results.map((item, index) => {
                 const id = index + 1;
                 return {
@@ -309,9 +666,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Asigna listeners para la búsqueda en tiempo real e interacciones
-     */
     function initPokedexEvents() {
         if (elements.pokedexSearch) {
             elements.pokedexSearch.addEventListener('input', (e) => {
@@ -324,15 +678,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchPokedex();
             });
         }
+
+        if (elements.modalCloseBtn) {
+            elements.modalCloseBtn.addEventListener('click', closePokemonModal);
+        }
+
+        // Cerrar modal al hacer clic en el overlay
+        if (elements.pokemonModal) {
+            elements.pokemonModal.addEventListener('click', (e) => {
+                if (e.target === elements.pokemonModal) {
+                    closePokemonModal();
+                }
+            });
+        }
     }
 
     /* ==========================================================================
        Módulo de Tabla de Tipos
        ========================================================================== */
 
-    /**
-     * Inicializa la cuadrícula de botones de selección de tipos
-     */
     function initTypeButtons() {
         if (!elements.typeButtonsGrid || typeof TYPE_KEYS === 'undefined') return;
 
@@ -365,20 +729,14 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.typeButtonsGrid.appendChild(fragment);
     }
 
-    /**
-     * Maneja la selección / deselección de un tipo al hacer clic
-     * @param {string} typeKey
-     */
     function handleTypeClick(typeKey) {
         const { selectedTypes } = state.typeChart;
         const index = selectedTypes.indexOf(typeKey);
 
         if (index !== -1) {
-            // Deseleccionar
             selectedTypes.splice(index, 1);
         } else {
             if (selectedTypes.length >= 2) {
-                // Reemplazar el segundo tipo si ya hay 2 seleccionados
                 selectedTypes[1] = typeKey;
             } else {
                 selectedTypes.push(typeKey);
@@ -388,18 +746,11 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTypeChartUI();
     }
 
-    /**
-     * Limpia la selección de tipos
-     */
     function clearSelectedTypes() {
         state.typeChart.selectedTypes = [];
         updateTypeChartUI();
     }
 
-    /**
-     * Cambia entre los modos Defensa y Ataque
-     * @param {string} newMode
-     */
     function setTypeMode(newMode) {
         if (state.typeChart.mode === newMode) return;
         state.typeChart.mode = newMode;
@@ -421,12 +772,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTypeChartUI();
     }
 
-    /**
-     * Crea un badge de tipo para mostrar en los resultados o en la barra de selección
-     * @param {Object} typeInfo - Objeto del tipo en POKEMON_TYPES
-     * @param {boolean} removable - Si incluye un botón de eliminar
-     * @returns {HTMLElement}
-     */
     function createTypeBadge(typeInfo, removable = false) {
         const badge = document.createElement('span');
         badge.className = 'type-badge';
@@ -459,13 +804,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return badge;
     }
 
-    /**
-     * Actualiza toda la interfaz de la Tabla de Tipos según el estado actual
-     */
     function updateTypeChartUI() {
         const { selectedTypes, mode, showNormalDamage } = state.typeChart;
 
-        // 1. Actualizar estado visual de los botones de tipos (grid)
         const typeButtons = elements.typeButtonsGrid.querySelectorAll('.type-btn');
         typeButtons.forEach(btn => {
             const typeKey = btn.getAttribute('data-type');
@@ -480,7 +821,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 2. Actualizar barra de selección actual
         if (elements.selectedTypesList) {
             elements.selectedTypesList.innerHTML = '';
 
@@ -500,13 +840,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 3. Renderizar resultados
         renderTypeResults();
     }
 
-    /**
-     * Renderiza las tarjetas de resultados según la selección y el modo
-     */
     function renderTypeResults() {
         if (!elements.typeResultsContainer) return;
 
@@ -536,11 +872,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Renderiza el panel de resultados para el modo Defensivo
-     * @param {Object} matchups
-     * @param {boolean} showNormal
-     */
     function renderDefenseResults(matchups, showNormal) {
         const categories = [
             { key: 'x4', label: 'Debilidades Extremas', multiplier: 'x4', badgeClass: 'mult-x4', list: matchups.x4 },
@@ -556,7 +887,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         categories.forEach(cat => {
             if (cat.collapsible && !showNormal) {
-                // Renderizar barra para desplegar daño normal x1
                 const toggleCard = document.createElement('div');
                 toggleCard.className = 'result-category-card collapsible-card';
 
@@ -640,11 +970,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.typeResultsContainer.appendChild(container);
     }
 
-    /**
-     * Renderiza el panel de resultados para el modo Ofensivo
-     * @param {Object} matchups
-     * @param {boolean} showNormal
-     */
     function renderOffenseResults(matchups, showNormal) {
         const categories = [
             { key: 'x2', label: 'Súper Efectivo Contra (x2)', multiplier: 'x2', badgeClass: 'mult-x2', list: matchups.x2 },
@@ -741,9 +1066,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.typeResultsContainer.appendChild(container);
     }
 
-    /**
-     * Asigna listeners de eventos para el módulo de tabla de tipos
-     */
     function initTypeChartEvents() {
         if (elements.clearTypesBtn) {
             elements.clearTypesBtn.addEventListener('click', clearSelectedTypes);
@@ -758,10 +1080,390 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Inicialización del módulo
+    /* ==========================================================================
+       Módulo Análisis de Combate (Matchup Tool)
+       ========================================================================== */
+
+    function setMatchupFormat(format) {
+        state.matchup.format = format;
+
+        if (format === '1v1') {
+            elements.format1v1Btn.classList.add('active');
+            elements.format2v2Btn.classList.remove('active');
+
+            // Ocultar slots secundarios
+            elements.slots.ally2.classList.add('hidden-slot');
+            elements.slots.rival2.classList.add('hidden-slot');
+        } else {
+            elements.format2v2Btn.classList.add('active');
+            elements.format1v1Btn.classList.remove('active');
+
+            // Mostrar slots secundarios
+            elements.slots.ally2.classList.remove('hidden-slot');
+            elements.slots.rival2.classList.remove('hidden-slot');
+        }
+
+        renderMatchupUI();
+    }
+
+    function openSlotSelectModal(slotKey) {
+        state.matchup.activeSlot = slotKey;
+        if (elements.slotSearchInput) elements.slotSearchInput.value = '';
+
+        // Renderizar accesos directos de Mi Equipo
+        if (elements.selectModalTeamButtons) {
+            elements.selectModalTeamButtons.innerHTML = '';
+
+            if (state.myTeam.length === 0) {
+                elements.selectModalTeamButtons.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">Tu equipo está vacío. Añade integrantes desde la Pokédex.</span>';
+            } else {
+                state.myTeam.forEach(member => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'modal-team-btn';
+                    btn.innerHTML = `<img src="${getPokemonSpriteUrl(member.name)}" width="20" height="20" style="object-fit:contain;"> ${capitalize(member.name)}`;
+                    btn.addEventListener('click', () => {
+                        assignPokemonToSlot(slotKey, member.id, member.name);
+                        closeSlotSelectModal();
+                    });
+                    elements.selectModalTeamButtons.appendChild(btn);
+                });
+            }
+        }
+
+        filterSlotModalPokemon('');
+        elements.selectPokemonModal.classList.remove('hidden');
+    }
+
+    function closeSlotSelectModal() {
+        elements.selectPokemonModal.classList.add('hidden');
+    }
+
+    function filterSlotModalPokemon(query) {
+        if (!elements.selectModalGrid) return;
+        elements.selectModalGrid.innerHTML = '';
+
+        const cleanQuery = query.toLowerCase().trim();
+        const numberQuery = cleanQuery.replace(/^#+/, '');
+
+        const filtered = state.allPokemon.filter(p => {
+            if (!cleanQuery) return true;
+            return p.name.toLowerCase().includes(cleanQuery) ||
+                   String(p.id) === numberQuery ||
+                   formatPokedexNumber(p.id).toLowerCase().includes(cleanQuery);
+        }).slice(0, 48); // Limitar a los primeros 48 para rapidez visual en modal
+
+        const fragment = document.createDocumentFragment();
+
+        filtered.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'modal-pokemon-card';
+
+            const img = document.createElement('img');
+            img.src = getPokemonSpriteUrl(p.name);
+            img.alt = capitalize(p.name);
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = capitalize(p.name);
+
+            card.appendChild(img);
+            card.appendChild(nameSpan);
+
+            card.addEventListener('click', () => {
+                assignPokemonToSlot(state.matchup.activeSlot, p.id, p.name);
+                closeSlotSelectModal();
+            });
+
+            fragment.appendChild(card);
+        });
+
+        elements.selectModalGrid.appendChild(fragment);
+    }
+
+    async function assignPokemonToSlot(slotKey, id, name) {
+        // Asignar objeto básico temporalmente
+        state.matchup.slots[slotKey] = { id, name, details: null };
+        renderMatchupUI();
+
+        try {
+            const details = await fetchPokemonDetails(id);
+            state.matchup.slots[slotKey].details = details;
+            renderMatchupUI();
+        } catch (err) {
+            console.error('Error al cargar datos para slot:', err);
+        }
+    }
+
+    function clearSlot(slotKey) {
+        state.matchup.slots[slotKey] = null;
+        renderMatchupUI();
+    }
+
+    function renderMatchupUI() {
+        const isDouble = state.matchup.format === '2v2';
+        const activeSlotKeys = isDouble
+            ? ['ally1', 'ally2', 'rival1', 'rival2']
+            : ['ally1', 'rival1'];
+
+        // Renderizar slots
+        activeSlotKeys.forEach(slotKey => {
+            const slotElem = elements.slots[slotKey];
+            if (!slotElem) return;
+
+            const slotData = state.matchup.slots[slotKey];
+
+            if (!slotData) {
+                slotElem.className = 'matchup-slot empty-slot';
+                slotElem.innerHTML = `
+                    <div class="slot-add-btn">
+                        <span class="slot-add-icon">➕</span>
+                        <span>Seleccionar Pokémon</span>
+                    </div>
+                `;
+                slotElem.onclick = () => openSlotSelectModal(slotKey);
+            } else {
+                slotElem.className = 'matchup-slot filled-slot';
+                slotElem.onclick = null;
+
+                const details = slotData.details;
+                const speedText = details ? `Vel: ${details.stats.speed}` : 'Cargando...';
+
+                slotElem.innerHTML = `
+                    <div class="slot-filled-card">
+                        <div class="slot-pokemon-info">
+                            <img class="slot-pokemon-img" src="${getPokemonSpriteUrl(slotData.name)}" alt="${capitalize(slotData.name)}">
+                            <div class="slot-pokemon-details">
+                                <h4>${capitalize(slotData.name)}</h4>
+                                <span class="slot-pokemon-speed">⚡ ${speedText}</span>
+                            </div>
+                        </div>
+                        <div class="slot-actions">
+                            <button class="slot-btn slot-inspect-btn" title="Inspeccionar">🔍</button>
+                            <button class="slot-btn slot-clear-btn" title="Eliminar">❌</button>
+                        </div>
+                    </div>
+                `;
+
+                const inspectBtn = slotElem.querySelector('.slot-inspect-btn');
+                if (inspectBtn) {
+                    inspectBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        openPokemonModal(slotData.id, slotData.name);
+                    });
+                }
+
+                const clearBtn = slotElem.querySelector('.slot-clear-btn');
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        clearSlot(slotKey);
+                    });
+                }
+            }
+        });
+
+        // Renderizar panel de resultados del análisis
+        renderMatchupAnalysis(activeSlotKeys);
+    }
+
+    function renderMatchupAnalysis(activeSlotKeys) {
+        if (!elements.matchupAnalysisContainer) return;
+
+        const activePokemons = [];
+        activeSlotKeys.forEach(key => {
+            const item = state.matchup.slots[key];
+            if (item && item.details) {
+                activePokemons.push({ slotKey: key, ...item });
+            }
+        });
+
+        if (activePokemons.length === 0) {
+            elements.matchupAnalysisContainer.innerHTML = `
+                <div class="empty-results-card">
+                    <div class="empty-icon">⚔️</div>
+                    <h3>Selecciona un Pokémon en pista</h3>
+                    <p>Agrega Pokémon a los slots aliados o rivales para calcular la línea temporal de velocidad, coberturas dobles y matchups.</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+
+        // 1. SPEED TIER TIMELINE VISUAL
+        const sortedBySpeed = [...activePokemons].sort((a, b) => b.details.stats.speed - a.details.stats.speed);
+        const maxSpeed = Math.max(...sortedBySpeed.map(p => p.details.stats.speed), 1);
+
+        html += `
+            <div class="analysis-section-card">
+                <h3 class="analysis-title">⏱️ Orden de Velocidad (Speed Tier Timeline)</h3>
+                <p class="type-chart-description">Ordenados de mayor a menor Velocidad Base en pista:</p>
+                <div class="speed-tier-timeline">
+                    ${sortedBySpeed.map((p, idx) => {
+                        const pct = Math.min(100, Math.max(15, Math.round((p.details.stats.speed / maxSpeed) * 100)));
+                        const isAlly = p.slotKey.startsWith('ally');
+                        const sideTag = isAlly ? '🛡️' : '⚔️';
+
+                        return `
+                            <div class="speed-tier-item">
+                                <div class="speed-pokemon-name">
+                                    <span>#${idx + 1} ${sideTag}</span>
+                                    <img src="${getPokemonSpriteUrl(p.name)}" alt="${capitalize(p.name)}">
+                                    <span>${capitalize(p.name)}</span>
+                                </div>
+                                <span class="speed-val-tag">${p.details.stats.speed}</span>
+                                <div class="speed-bar-wrapper">
+                                    <div class="speed-bar-fill" style="width: ${pct}%; background: ${isAlly ? 'linear-gradient(90deg, #2A75D3, #6390F0)' : 'linear-gradient(90deg, #E3350D, #EF4444)'}"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+
+        // 2. COBERTURA COLECTIVA EN DOBLES (Shared Weaknesses)
+        if (state.matchup.format === '2v2') {
+            const ally1 = state.matchup.slots.ally1?.details;
+            const ally2 = state.matchup.slots.ally2?.details;
+
+            html += `<div class="analysis-section-card">`;
+            html += `<h3 class="analysis-title">🚨 Cobertura Colectiva de Aliados (Dobles 2v2)</h3>`;
+
+            if (ally1 && ally2) {
+                // Calcular debilidades de cada uno
+                const def1 = calculateDefenseMatchups(ally1.types[0], ally1.types[1] || null);
+                const def2 = calculateDefenseMatchups(ally2.types[0], ally2.types[1] || null);
+
+                // Debilidades compartidas (x2 o x4)
+                const weakTypes1 = [...def1.x4.map(t => ({ id: t.id, name: t.name, color: t.color, mult: 4 })), ...def1.x2.map(t => ({ id: t.id, name: t.name, color: t.color, mult: 2 }))];
+                const weakTypes2 = [...def2.x4.map(t => ({ id: t.id, name: t.name, color: t.color, mult: 4 })), ...def2.x2.map(t => ({ id: t.id, name: t.name, color: t.color, mult: 2 }))];
+
+                const sharedWeaknesses = [];
+
+                weakTypes1.forEach(w1 => {
+                    const matchIn2 = weakTypes2.find(w2 => w2.id === w1.id);
+                    if (matchIn2) {
+                        sharedWeaknesses.push({
+                            type: w1,
+                            mult1: w1.mult,
+                            mult2: matchIn2.mult
+                        });
+                    }
+                });
+
+                if (sharedWeaknesses.length === 0) {
+                    html += `
+                        <div class="status-tag active-tag" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                            ✅ ¡Gran Cobertura! Ambos Pokémon de tu equipo no comparten ninguna debilidad elemental en común.
+                        </div>
+                    `;
+                } else {
+                    html += `<p class="type-chart-description" style="margin-bottom: 0.75rem;">¡Alerta! Tu equipo de 2 Pokémon en pista sufre daño super efectivo (x2 o x4) ante estos mismos tipos:</p>`;
+                    sharedWeaknesses.forEach(sw => {
+                        html += `
+                            <div class="double-weakness-alert">
+                                <div class="alert-type-badge">
+                                    <span class="type-badge" style="background-color: ${sw.type.color}">${sw.type.name}</span>
+                                    <span class="alert-text">⚠️ Ambos sufren daño aumentado (${capitalize(ally1.name)} x${sw.mult1} y ${capitalize(ally2.name)} x${sw.mult2})</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+            } else {
+                html += `<p class="placeholder-text">Selecciona los 2 Pokémon Aliados en pista para analizar las debilidades compartidas de tu equipo.</p>`;
+            }
+
+            html += `</div>`;
+        }
+
+        // 3. EFICIENCIA DE TIPOS RÁPIDA ENTRE PISTA (Matchup Quick Matrix)
+        const alliesInField = activePokemons.filter(p => p.slotKey.startsWith('ally'));
+        const rivalsInField = activePokemons.filter(p => p.slotKey.startsWith('rival'));
+
+        if (alliesInField.length > 0 && rivalsInField.length > 0) {
+            html += `
+                <div class="analysis-section-card">
+                    <h3 class="analysis-title">⚔️ Eficiencia de Tipos en Enfrentamiento</h3>
+                    <p class="type-chart-description">Análisis de efectividad directa entre Aliados y Rivales en pista:</p>
+                    <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+                        ${alliesInField.map(a => {
+                            return rivalsInField.map(r => {
+                                // Efectividad de Aliado atacando a Rival
+                                let maxAllyToRival = 0;
+                                a.details.types.forEach(atkType => {
+                                    const mult1 = TYPE_CHART[atkType][r.details.types[0]] || 1;
+                                    const mult2 = r.details.types[1] ? (TYPE_CHART[atkType][r.details.types[1]] || 1) : 1;
+                                    const total = mult1 * mult2;
+                                    if (total > maxAllyToRival) maxAllyToRival = total;
+                                });
+
+                                // Efectividad de Rival atacando a Aliado
+                                let maxRivalToAlly = 0;
+                                r.details.types.forEach(atkType => {
+                                    const mult1 = TYPE_CHART[atkType][a.details.types[0]] || 1;
+                                    const mult2 = a.details.types[1] ? (TYPE_CHART[atkType][a.details.types[1]] || 1) : 1;
+                                    const total = mult1 * mult2;
+                                    if (total > maxRivalToAlly) maxRivalToAlly = total;
+                                });
+
+                                const allyBadge = maxAllyToRival >= 2 ? 'mult-x2' : maxAllyToRival === 0 ? 'mult-x0' : maxAllyToRival < 1 ? 'mult-x05' : 'mult-x1';
+                                const rivalBadge = maxRivalToAlly >= 2 ? 'mult-x2' : maxRivalToAlly === 0 ? 'mult-x0' : maxRivalToAlly < 1 ? 'mult-x05' : 'mult-x1';
+
+                                return `
+                                    <div class="speed-tier-item" style="grid-template-columns: 1fr auto 1fr;">
+                                        <div style="display:flex; align-items:center; gap: 0.5rem;">
+                                            <img src="${getPokemonSpriteUrl(a.name)}" width="30" height="30">
+                                            <strong>${capitalize(a.name)}</strong>
+                                            <span class="mult-badge ${allyBadge}">Atq x${maxAllyToRival}</span>
+                                        </div>
+                                        <span class="vs-text" style="font-size: 0.8rem;">VS</span>
+                                        <div style="display:flex; align-items:center; justify-content: flex-end; gap: 0.5rem;">
+                                            <span class="mult-badge ${rivalBadge}">Atq x${maxRivalToAlly}</span>
+                                            <strong>${capitalize(r.name)}</strong>
+                                            <img src="${getPokemonSpriteUrl(r.name)}" width="30" height="30">
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        elements.matchupAnalysisContainer.innerHTML = html;
+    }
+
+    function initMatchupEvents() {
+        if (elements.format1v1Btn) {
+            elements.format1v1Btn.addEventListener('click', () => setMatchupFormat('1v1'));
+        }
+        if (elements.format2v2Btn) {
+            elements.format2v2Btn.addEventListener('click', () => setMatchupFormat('2v2'));
+        }
+        if (elements.selectModalCloseBtn) {
+            elements.selectModalCloseBtn.addEventListener('click', closeSlotSelectModal);
+        }
+        if (elements.selectPokemonModal) {
+            elements.selectPokemonModal.addEventListener('click', (e) => {
+                if (e.target === elements.selectPokemonModal) closeSlotSelectModal();
+            });
+        }
+        if (elements.slotSearchInput) {
+            elements.slotSearchInput.addEventListener('input', (e) => {
+                filterSlotModalPokemon(e.target.value);
+            });
+        }
+    }
+
+    // Inicialización de la aplicación
     initNavigation();
     initPokedexEvents();
+    loadMyTeamFromStorage();
     fetchPokedex();
     initTypeButtons();
     initTypeChartEvents();
+    initMatchupEvents();
 });
