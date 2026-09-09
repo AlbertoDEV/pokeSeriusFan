@@ -16,39 +16,89 @@
             <span class="logo-text">PKMN CHAMPIONS</span>
         </div>
         <nav class="nav-links">
-            <button class="nav-btn active" data-tab="home">Inicio</button>
-            <button class="nav-btn disabled" data-tab="pokedex" title="Próximamente en futuras versiones" disabled>
-                Pokédex <span class="badge">Próximamente</span>
-            </button>
-            <button class="nav-btn disabled" data-tab="type-chart" title="Próximamente en futuras versiones" disabled>
+            <button class="nav-btn" data-tab="home">Inicio</button>
+            <button class="nav-btn active" data-tab="pokedex">Pokédex</button>
+            <button class="nav-btn" data-tab="type-chart">
                 Tabla de Tipos <span class="badge">Próximamente</span>
             </button>
         </nav>
     </header>
 
     <main class="main-container">
-        <section class="hero-card">
-            <div class="hero-header">
-                <span class="subtitle">Herramienta de Soporte Táctico</span>
-                <h1 class="pokemon-title">Pokémon Champions</h1>
-            </div>
-            <p class="hero-description">
-                Bienvenido a la herramienta definitiva de consulta rápida para combates exigentes en <strong>Pokémon Champions</strong>. Diseñada para brindar información precisa y de alto valor a entrenadores durante sus enfrentamientos estratégicos.
-            </p>
+        <!-- Vista Inicio -->
+        <section id="home-view" class="tab-view view-hidden">
+            <div class="hero-card">
+                <div class="hero-header">
+                    <span class="subtitle">Herramienta de Soporte Táctico</span>
+                    <h1 class="pokemon-title">Pokémon Champions</h1>
+                </div>
+                <p class="hero-description">
+                    Bienvenido a la herramienta definitiva de consulta rápida para combates exigentes en <strong>Pokémon Champions</strong>. Diseñada para brindar información precisa y de alto valor a entrenadores durante sus enfrentamientos estratégicos.
+                </p>
 
-            <div class="features-grid">
-                <div class="feature-card disabled-feature">
-                    <div class="feature-icon" aria-hidden="true">🔍</div>
-                    <h3>Pokédex Táctica</h3>
-                    <p>Consulta rápida de Pokédex conectada con PokéAPI y con sprites animados de pokemondb.net para analizar rivales al instante.</p>
-                    <span class="status-tag">Próximamente</span>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">🔍</div>
+                        <h3>Pokédex Táctica</h3>
+                        <p>Consulta rápida de Pokédex conectada con PokéAPI y con sprites de pokemondb.net para analizar rivales al instante.</p>
+                        <span class="status-tag active-tag">Disponible</span>
+                    </div>
+                    <div class="feature-card disabled-feature">
+                        <div class="feature-icon" aria-hidden="true">⚡</div>
+                        <h3>Tabla de Tipos Interactiva</h3>
+                        <p>Cálculo de eficiencias de tipos, debilidades y multiplicadores de daño en tiempo real con una interfaz estilizada.</p>
+                        <span class="status-tag">Próximamente</span>
+                    </div>
                 </div>
-                <div class="feature-card disabled-feature">
-                    <div class="feature-icon" aria-hidden="true">⚡</div>
-                    <h3>Tabla de Tipos Interactiva</h3>
-                    <p>Cálculo de eficiencias de tipos, debilidades y multiplicadores de daño en tiempo real con una interfaz estilizada al estilo pkmn.help.</p>
-                    <span class="status-tag">Próximamente</span>
+            </div>
+        </section>
+
+        <!-- Vista Pokédex -->
+        <section id="pokedex-view" class="tab-view">
+            <div class="pokedex-header">
+                <div class="pokedex-title-container">
+                    <h2 class="section-title">Pokédex Táctica</h2>
+                    <span class="pokedex-count" id="pokedex-count">Cargando Pokémon...</span>
                 </div>
+                <div class="search-box">
+                    <span class="search-icon" aria-hidden="true">🔍</span>
+                    <input type="text" id="pokedex-search" placeholder="Buscar por nombre o número (ej. Pikachu o 25, #0025)..." autocomplete="off" aria-label="Buscar Pokémon por nombre o número">
+                </div>
+            </div>
+
+            <!-- Indicador de Carga -->
+            <div id="pokedex-loader" class="loader-container">
+                <div class="pokeball-spinner" aria-hidden="true"></div>
+                <p class="loader-text">Accediendo a la base de datos PokéAPI...</p>
+            </div>
+
+            <!-- Mensaje de Error -->
+            <div id="pokedex-error" class="error-container hidden">
+                <p>⚠️ No se pudieron cargar los datos de la PokéAPI.</p>
+                <button id="retry-btn" class="retry-btn">Reintentar</button>
+            </div>
+
+            <!-- Cuadrícula de Pokémon -->
+            <div id="pokedex-grid" class="pokedex-grid hidden"></div>
+
+            <!-- Estado Vacío por Búsqueda sin Resultados -->
+            <div id="pokedex-empty" class="empty-container hidden">
+                <div class="empty-icon">🔍</div>
+                <h3>No se encontraron Pokémon</h3>
+                <p>No se encontró ningún Pokémon que coincida con tu búsqueda.</p>
+            </div>
+        </section>
+
+        <!-- Vista Tabla de Tipos (En desarrollo) -->
+        <section id="type-chart-view" class="tab-view view-hidden">
+            <div class="hero-card coming-soon-card">
+                <div class="coming-soon-icon">⚡</div>
+                <span class="subtitle">Estado del Módulo</span>
+                <h2 class="pokemon-title">Tabla de Tipos</h2>
+                <div class="badge-large">Próximamente / En desarrollo</div>
+                <p class="hero-description" style="margin-top: 1.5rem; margin-bottom: 0;">
+                    Estamos trabajando en una calculadora interactiva de efectividad de tipos, multiplicadores de daño y cobertura táctica para <strong>Pokémon Champions</strong>.
+                </p>
             </div>
         </section>
     </main>
