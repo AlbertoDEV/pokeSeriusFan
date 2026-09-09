@@ -1,0 +1,292 @@
+/* ==========================================================================
+   Variables y Configuración Global
+   ========================================================================== */
+:root {
+    --primary-red: #E3350D;
+    --primary-red-hover: #C22B08;
+    --pokemon-yellow: #FFCB05;
+    --pokemon-blue: #2A75D3;
+    --bg-dark: #12141D;
+    --card-bg: #1A1D2B;
+    --card-border: #2E344B;
+    --text-primary: #F0F4F8;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+    --accent-gold: #F59E0B;
+    --disabled-bg: #242938;
+    --font-pokemon: 'Press Start 2P', monospace;
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --shadow-main: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* ==========================================================================
+   Reset y Estilos Base
+   ========================================================================== */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-image:
+        radial-gradient(circle at 20% 20%, rgba(227, 53, 13, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 80% 80%, rgba(42, 117, 211, 0.08) 0%, transparent 40%);
+    background-attachment: fixed;
+    line-height: 1.6;
+}
+
+/* ==========================================================================
+   Navegación / Header
+   ========================================================================== */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: rgba(26, 29, 43, 0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 2px solid var(--card-border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.pokeball-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(to bottom, var(--primary-red) 45%, #ffffff 45%, #ffffff 55%, var(--bg-dark) 55%);
+    border: 2px solid var(--text-primary);
+    position: relative;
+    box-shadow: 0 0 8px rgba(227, 53, 13, 0.5);
+}
+
+.pokeball-icon::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    background-color: #ffffff;
+    border: 2px solid var(--bg-dark);
+    border-radius: 50%;
+}
+
+.logo-text {
+    font-family: var(--font-pokemon);
+    font-size: 0.85rem;
+    color: var(--pokemon-yellow);
+    text-shadow: 2px 2px 0px var(--pokemon-blue);
+    letter-spacing: 1px;
+}
+
+.nav-links {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.nav-btn {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--card-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-btn.active {
+    background-color: var(--primary-red);
+    color: #ffffff;
+    border-color: var(--primary-red-hover);
+    box-shadow: 0 2px 10px rgba(227, 53, 13, 0.3);
+}
+
+.nav-btn.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: var(--disabled-bg);
+}
+
+.badge {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    background-color: var(--accent-gold);
+    color: #000;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Contenido Principal
+   ========================================================================== */
+.main-container {
+    flex: 1;
+    max-width: 1000px;
+    width: 100%;
+    margin: 3rem auto;
+    padding: 0 1.5rem;
+}
+
+.hero-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    padding: 3rem 2.5rem;
+    box-shadow: var(--shadow-main);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-red), var(--pokemon-yellow), var(--pokemon-blue));
+}
+
+.hero-header {
+    margin-bottom: 1.5rem;
+}
+
+.subtitle {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--pokemon-yellow);
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.pokemon-title {
+    font-family: var(--font-pokemon);
+    font-size: 1.75rem;
+    color: #ffffff;
+    line-height: 1.4;
+    text-shadow: 3px 3px 0px var(--primary-red);
+    margin-top: 0.5rem;
+}
+
+.hero-description {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    max-width: 750px;
+    margin: 0 auto 2.5rem auto;
+}
+
+.hero-description strong {
+    color: var(--text-primary);
+}
+
+/* Grid de Características / Roadmap */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.feature-card {
+    background-color: rgba(18, 20, 29, 0.6);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    padding: 1.75rem;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.feature-card:hover {
+    border-color: var(--pokemon-blue);
+    transform: translateY(-2px);
+}
+
+.feature-icon {
+    font-size: 1.75rem;
+}
+
+.feature-card h3 {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.feature-card p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    flex: 1;
+}
+
+.status-tag {
+    align-self: flex-start;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    background-color: var(--disabled-bg);
+    color: var(--accent-gold);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+.footer {
+    text-align: center;
+    padding: 1.5rem;
+    border-top: 1px solid var(--card-border);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    background-color: rgba(18, 20, 29, 0.9);
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+@media (max-width: 768px) {
+    .navbar {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .pokemon-title {
+        font-size: 1.25rem;
+    }
+
+    .hero-card {
+        padding: 2rem 1.25rem;
+    }
+}
