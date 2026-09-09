@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Champions - Companion Tool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo-container">
+            <div class="pokeball-icon" aria-hidden="true"></div>
+            <span class="logo-text">PKMN CHAMPIONS</span>
+        </div>
+        <nav class="nav-links">
+            <button class="nav-btn active" data-tab="home">Inicio</button>
+            <button class="nav-btn disabled" data-tab="pokedex" title="Próximamente en futuras versiones" disabled>
+                Pokédex <span class="badge">Próximamente</span>
+            </button>
+            <button class="nav-btn disabled" data-tab="type-chart" title="Próximamente en futuras versiones" disabled>
+                Tabla de Tipos <span class="badge">Próximamente</span>
+            </button>
+        </nav>
+    </header>
+
+    <main class="main-container">
+        <section class="hero-card">
+            <div class="hero-header">
+                <span class="subtitle">Herramienta de Soporte Táctico</span>
+                <h1 class="pokemon-title">Pokémon Champions</h1>
+            </div>
+            <p class="hero-description">
+                Bienvenido a la herramienta definitiva de consulta rápida para combates exigentes en <strong>Pokémon Champions</strong>. Diseñada para brindar información precisa y de alto valor a entrenadores durante sus enfrentamientos estratégicos.
+            </p>
+
+            <div class="features-grid">
+                <div class="feature-card disabled-feature">
+                    <div class="feature-icon" aria-hidden="true">🔍</div>
+                    <h3>Pokédex Táctica</h3>
+                    <p>Consulta rápida de Pokédex conectada con PokéAPI y con sprites animados de pokemondb.net para analizar rivales al instante.</p>
+                    <span class="status-tag">Próximamente</span>
+                </div>
+                <div class="feature-card disabled-feature">
+                    <div class="feature-icon" aria-hidden="true">⚡</div>
+                    <h3>Tabla de Tipos Interactiva</h3>
+                    <p>Cálculo de eficiencias de tipos, debilidades y multiplicadores de daño en tiempo real con una interfaz estilizada al estilo pkmn.help.</p>
+                    <span class="status-tag">Próximamente</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>© 2025 Pokémon Champions Companion. No afiliado con Nintendo, Game Freak o The Pokémon Company.</p>
+    </footer>
+
+    <script src="src/app.js"></script>
+</body>
+</html>
