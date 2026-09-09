@@ -11,7 +11,13 @@ document.addEventListener('DOMContentLoaded', () => {
         filteredPokemon: [],
         isLoading: false,
         error: null,
-        activeTab: 'pokedex'
+        activeTab: 'pokedex',
+        // Estado de la tabla de tipos
+        typeChart: {
+            selectedTypes: [], // Máximo 2 tipos (p. ej. ['fire', 'flying'])
+            mode: 'defense',   // 'defense' u 'offense'
+            showNormalDamage: false // Control del colapsable x1
+        }
     };
 
     // Referencias al DOM
@@ -28,7 +34,14 @@ document.addEventListener('DOMContentLoaded', () => {
         pokedexLoader: document.getElementById('pokedex-loader'),
         pokedexError: document.getElementById('pokedex-error'),
         pokedexEmpty: document.getElementById('pokedex-empty'),
-        retryBtn: document.getElementById('retry-btn')
+        retryBtn: document.getElementById('retry-btn'),
+        // Elementos de la tabla de tipos
+        typeButtonsGrid: document.getElementById('type-buttons-grid'),
+        selectedTypesList: document.getElementById('selected-types-list'),
+        clearTypesBtn: document.getElementById('clear-types-btn'),
+        modeDefenseBtn: document.getElementById('mode-defense-btn'),
+        modeOffenseBtn: document.getElementById('mode-offense-btn'),
+        typeResultsContainer: document.getElementById('type-results-container')
     };
 
     /**
@@ -142,6 +155,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 elements.views[tab].classList.add('view-hidden');
             }
         });
+
+        // Re-renderizar o verificar el módulo de tipos si se activa su pestaña
+        if (targetTab === 'type-chart') {
+            updateTypeChartUI();
+        }
     }
 
     /**
@@ -308,8 +326,435 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /* ==========================================================================
+       Módulo de Tabla de Tipos
+       ========================================================================== */
+
+    /**
+     * Inicializa la cuadrícula de botones de selección de tipos
+     */
+    function initTypeButtons() {
+        if (!elements.typeButtonsGrid || typeof TYPE_KEYS === 'undefined') return;
+
+        elements.typeButtonsGrid.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+
+        TYPE_KEYS.forEach(typeKey => {
+            const typeInfo = POKEMON_TYPES[typeKey];
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'type-btn';
+            btn.setAttribute('data-type', typeKey);
+            btn.style.setProperty('--type-color', typeInfo.color);
+            btn.style.setProperty('--type-text-bg', typeInfo.textBg);
+
+            const dot = document.createElement('span');
+            dot.className = 'type-btn-dot';
+
+            const text = document.createElement('span');
+            text.textContent = typeInfo.name;
+
+            btn.appendChild(dot);
+            btn.appendChild(text);
+
+            btn.addEventListener('click', () => handleTypeClick(typeKey));
+            fragment.appendChild(btn);
+        });
+
+        elements.typeButtonsGrid.appendChild(fragment);
+    }
+
+    /**
+     * Maneja la selección / deselección de un tipo al hacer clic
+     * @param {string} typeKey
+     */
+    function handleTypeClick(typeKey) {
+        const { selectedTypes } = state.typeChart;
+        const index = selectedTypes.indexOf(typeKey);
+
+        if (index !== -1) {
+            // Deseleccionar
+            selectedTypes.splice(index, 1);
+        } else {
+            if (selectedTypes.length >= 2) {
+                // Reemplazar el segundo tipo si ya hay 2 seleccionados
+                selectedTypes[1] = typeKey;
+            } else {
+                selectedTypes.push(typeKey);
+            }
+        }
+
+        updateTypeChartUI();
+    }
+
+    /**
+     * Limpia la selección de tipos
+     */
+    function clearSelectedTypes() {
+        state.typeChart.selectedTypes = [];
+        updateTypeChartUI();
+    }
+
+    /**
+     * Cambia entre los modos Defensa y Ataque
+     * @param {string} newMode
+     */
+    function setTypeMode(newMode) {
+        if (state.typeChart.mode === newMode) return;
+        state.typeChart.mode = newMode;
+
+        if (elements.modeDefenseBtn && elements.modeOffenseBtn) {
+            if (newMode === 'defense') {
+                elements.modeDefenseBtn.classList.add('active');
+                elements.modeDefenseBtn.setAttribute('aria-selected', 'true');
+                elements.modeOffenseBtn.classList.remove('active');
+                elements.modeOffenseBtn.setAttribute('aria-selected', 'false');
+            } else {
+                elements.modeOffenseBtn.classList.add('active');
+                elements.modeOffenseBtn.setAttribute('aria-selected', 'true');
+                elements.modeDefenseBtn.classList.remove('active');
+                elements.modeDefenseBtn.setAttribute('aria-selected', 'false');
+            }
+        }
+
+        updateTypeChartUI();
+    }
+
+    /**
+     * Crea un badge de tipo para mostrar en los resultados o en la barra de selección
+     * @param {Object} typeInfo - Objeto del tipo en POKEMON_TYPES
+     * @param {boolean} removable - Si incluye un botón de eliminar
+     * @returns {HTMLElement}
+     */
+    function createTypeBadge(typeInfo, removable = false) {
+        const badge = document.createElement('span');
+        badge.className = 'type-badge';
+        badge.style.backgroundColor = typeInfo.color;
+
+        const text = document.createElement('span');
+        text.textContent = typeInfo.name;
+        badge.appendChild(text);
+
+        if (removable) {
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'remove-badge-btn';
+            removeBtn.innerHTML = '&times;';
+            removeBtn.title = `Eliminar ${typeInfo.name}`;
+            removeBtn.setAttribute('aria-label', `Eliminar ${typeInfo.name}`);
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleTypeClick(typeInfo.id);
+            });
+            badge.appendChild(removeBtn);
+        }
+
+        return badge;
+    }
+
+    /**
+     * Actualiza toda la interfaz de la Tabla de Tipos según el estado actual
+     */
+    function updateTypeChartUI() {
+        const { selectedTypes, mode, showNormalDamage } = state.typeChart;
+
+        // 1. Actualizar estado visual de los botones de tipos (grid)
+        const typeButtons = elements.typeButtonsGrid.querySelectorAll('.type-btn');
+        typeButtons.forEach(btn => {
+            const typeKey = btn.getAttribute('data-type');
+            const selectedIndex = selectedTypes.indexOf(typeKey);
+
+            if (selectedIndex !== -1) {
+                btn.classList.add('selected');
+                btn.setAttribute('data-order', selectedIndex + 1);
+            } else {
+                btn.classList.remove('selected');
+                btn.removeAttribute('data-order');
+            }
+        });
+
+        // 2. Actualizar barra de selección actual
+        if (elements.selectedTypesList) {
+            elements.selectedTypesList.innerHTML = '';
+
+            if (selectedTypes.length === 0) {
+                elements.selectedTypesList.innerHTML = '<span class="placeholder-text">Ningún tipo seleccionado (haz clic en los botones de abajo)</span>';
+                if (elements.clearTypesBtn) elements.clearTypesBtn.classList.add('hidden');
+            } else {
+                if (elements.clearTypesBtn) elements.clearTypesBtn.classList.remove('hidden');
+
+                selectedTypes.forEach(typeKey => {
+                    const typeInfo = POKEMON_TYPES[typeKey];
+                    if (typeInfo) {
+                        const badge = createTypeBadge(typeInfo, true);
+                        elements.selectedTypesList.appendChild(badge);
+                    }
+                });
+            }
+        }
+
+        // 3. Renderizar resultados
+        renderTypeResults();
+    }
+
+    /**
+     * Renderiza las tarjetas de resultados según la selección y el modo
+     */
+    function renderTypeResults() {
+        if (!elements.typeResultsContainer) return;
+
+        const { selectedTypes, mode, showNormalDamage } = state.typeChart;
+        elements.typeResultsContainer.innerHTML = '';
+
+        if (selectedTypes.length === 0) {
+            elements.typeResultsContainer.innerHTML = `
+                <div class="empty-results-card">
+                    <div class="empty-icon">⚡</div>
+                    <h3>Selecciona un Tipo</h3>
+                    <p>Elige al menos un tipo de Pokémon para desplegar el desglose defensivo u ofensivo.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const type1 = selectedTypes[0];
+        const type2 = selectedTypes[1] || null;
+
+        if (mode === 'defense') {
+            const matchups = calculateDefenseMatchups(type1, type2);
+            renderDefenseResults(matchups, showNormalDamage);
+        } else {
+            const matchups = calculateOffenseMatchups(type1, type2);
+            renderOffenseResults(matchups, showNormalDamage);
+        }
+    }
+
+    /**
+     * Renderiza el panel de resultados para el modo Defensivo
+     * @param {Object} matchups
+     * @param {boolean} showNormal
+     */
+    function renderDefenseResults(matchups, showNormal) {
+        const categories = [
+            { key: 'x4', label: 'Debilidades Extremas', multiplier: 'x4', badgeClass: 'mult-x4', list: matchups.x4 },
+            { key: 'x2', label: 'Debilidades', multiplier: 'x2', badgeClass: 'mult-x2', list: matchups.x2 },
+            { key: 'x05', label: 'Resistencias', multiplier: 'x1/2', badgeClass: 'mult-x05', list: matchups.x05 },
+            { key: 'x025', label: 'Altas Resistencias', multiplier: 'x1/4', badgeClass: 'mult-x025', list: matchups.x025 },
+            { key: 'x0', label: 'Inmunidades', multiplier: 'x0', badgeClass: 'mult-x0', list: matchups.x0 },
+            { key: 'x1', label: 'Daño Normal', multiplier: 'x1', badgeClass: 'mult-x1', list: matchups.x1, collapsible: true }
+        ];
+
+        const container = document.createElement('div');
+        container.className = 'results-grid';
+
+        categories.forEach(cat => {
+            if (cat.collapsible && !showNormal) {
+                // Renderizar barra para desplegar daño normal x1
+                const toggleCard = document.createElement('div');
+                toggleCard.className = 'result-category-card collapsible-card';
+
+                const toggleHeader = document.createElement('button');
+                toggleHeader.type = 'button';
+                toggleHeader.className = 'collapsible-toggle-btn';
+                toggleHeader.innerHTML = `
+                    <span>
+                        <span class="mult-badge mult-x1">x1</span>
+                        <strong>${cat.label} (${cat.list.length})</strong>
+                    </span>
+                    <span class="toggle-icon">▼ Mostrar</span>
+                `;
+                toggleHeader.addEventListener('click', () => {
+                    state.typeChart.showNormalDamage = true;
+                    updateTypeChartUI();
+                });
+
+                toggleCard.appendChild(toggleHeader);
+                container.appendChild(toggleCard);
+                return;
+            }
+
+            const card = document.createElement('div');
+            card.className = `result-category-card ${cat.collapsible ? 'is-expanded' : ''}`;
+
+            const header = document.createElement('div');
+            header.className = 'result-category-header';
+
+            const titleSpan = document.createElement('div');
+            titleSpan.className = 'result-title-wrapper';
+
+            const badge = document.createElement('span');
+            badge.className = `mult-badge ${cat.badgeClass}`;
+            badge.textContent = cat.multiplier;
+
+            const title = document.createElement('h4');
+            title.textContent = cat.label;
+
+            const countBadge = document.createElement('span');
+            countBadge.className = 'category-count';
+            countBadge.textContent = `(${cat.list.length})`;
+
+            titleSpan.appendChild(badge);
+            titleSpan.appendChild(title);
+            titleSpan.appendChild(countBadge);
+            header.appendChild(titleSpan);
+
+            if (cat.collapsible && showNormal) {
+                const collapseBtn = document.createElement('button');
+                collapseBtn.type = 'button';
+                collapseBtn.className = 'collapse-btn';
+                collapseBtn.innerHTML = '▲ Ocultar';
+                collapseBtn.addEventListener('click', () => {
+                    state.typeChart.showNormalDamage = false;
+                    updateTypeChartUI();
+                });
+                header.appendChild(collapseBtn);
+            }
+
+            card.appendChild(header);
+
+            const badgesGrid = document.createElement('div');
+            badgesGrid.className = 'result-badges-grid';
+
+            if (cat.list.length === 0) {
+                const emptyMsg = document.createElement('span');
+                emptyMsg.className = 'no-types-msg';
+                emptyMsg.textContent = 'Ninguno';
+                badgesGrid.appendChild(emptyMsg);
+            } else {
+                cat.list.forEach(typeInfo => {
+                    badgesGrid.appendChild(createTypeBadge(typeInfo));
+                });
+            }
+
+            card.appendChild(badgesGrid);
+            container.appendChild(card);
+        });
+
+        elements.typeResultsContainer.appendChild(container);
+    }
+
+    /**
+     * Renderiza el panel de resultados para el modo Ofensivo
+     * @param {Object} matchups
+     * @param {boolean} showNormal
+     */
+    function renderOffenseResults(matchups, showNormal) {
+        const categories = [
+            { key: 'x2', label: 'Súper Efectivo Contra (x2)', multiplier: 'x2', badgeClass: 'mult-x2', list: matchups.x2 },
+            { key: 'x05', label: 'Poco Efectivo Contra (x1/2)', multiplier: 'x1/2', badgeClass: 'mult-x05', list: matchups.x05 },
+            { key: 'x0', label: 'Sin Efecto Contra (x0)', multiplier: 'x0', badgeClass: 'mult-x0', list: matchups.x0 },
+            { key: 'x1', label: 'Daño Normal (x1)', multiplier: 'x1', badgeClass: 'mult-x1', list: matchups.x1, collapsible: true }
+        ];
+
+        const container = document.createElement('div');
+        container.className = 'results-grid';
+
+        categories.forEach(cat => {
+            if (cat.collapsible && !showNormal) {
+                const toggleCard = document.createElement('div');
+                toggleCard.className = 'result-category-card collapsible-card';
+
+                const toggleHeader = document.createElement('button');
+                toggleHeader.type = 'button';
+                toggleHeader.className = 'collapsible-toggle-btn';
+                toggleHeader.innerHTML = `
+                    <span>
+                        <span class="mult-badge mult-x1">x1</span>
+                        <strong>${cat.label} (${cat.list.length})</strong>
+                    </span>
+                    <span class="toggle-icon">▼ Mostrar</span>
+                `;
+                toggleHeader.addEventListener('click', () => {
+                    state.typeChart.showNormalDamage = true;
+                    updateTypeChartUI();
+                });
+
+                toggleCard.appendChild(toggleHeader);
+                container.appendChild(toggleCard);
+                return;
+            }
+
+            const card = document.createElement('div');
+            card.className = `result-category-card ${cat.collapsible ? 'is-expanded' : ''}`;
+
+            const header = document.createElement('div');
+            header.className = 'result-category-header';
+
+            const titleSpan = document.createElement('div');
+            titleSpan.className = 'result-title-wrapper';
+
+            const badge = document.createElement('span');
+            badge.className = `mult-badge ${cat.badgeClass}`;
+            badge.textContent = cat.multiplier;
+
+            const title = document.createElement('h4');
+            title.textContent = cat.label;
+
+            const countBadge = document.createElement('span');
+            countBadge.className = 'category-count';
+            countBadge.textContent = `(${cat.list.length})`;
+
+            titleSpan.appendChild(badge);
+            titleSpan.appendChild(title);
+            titleSpan.appendChild(countBadge);
+            header.appendChild(titleSpan);
+
+            if (cat.collapsible && showNormal) {
+                const collapseBtn = document.createElement('button');
+                collapseBtn.type = 'button';
+                collapseBtn.className = 'collapse-btn';
+                collapseBtn.innerHTML = '▲ Ocultar';
+                collapseBtn.addEventListener('click', () => {
+                    state.typeChart.showNormalDamage = false;
+                    updateTypeChartUI();
+                });
+                header.appendChild(collapseBtn);
+            }
+
+            card.appendChild(header);
+
+            const badgesGrid = document.createElement('div');
+            badgesGrid.className = 'result-badges-grid';
+
+            if (cat.list.length === 0) {
+                const emptyMsg = document.createElement('span');
+                emptyMsg.className = 'no-types-msg';
+                emptyMsg.textContent = 'Ninguno';
+                badgesGrid.appendChild(emptyMsg);
+            } else {
+                cat.list.forEach(typeInfo => {
+                    badgesGrid.appendChild(createTypeBadge(typeInfo));
+                });
+            }
+
+            card.appendChild(badgesGrid);
+            container.appendChild(card);
+        });
+
+        elements.typeResultsContainer.appendChild(container);
+    }
+
+    /**
+     * Asigna listeners de eventos para el módulo de tabla de tipos
+     */
+    function initTypeChartEvents() {
+        if (elements.clearTypesBtn) {
+            elements.clearTypesBtn.addEventListener('click', clearSelectedTypes);
+        }
+
+        if (elements.modeDefenseBtn) {
+            elements.modeDefenseBtn.addEventListener('click', () => setTypeMode('defense'));
+        }
+
+        if (elements.modeOffenseBtn) {
+            elements.modeOffenseBtn.addEventListener('click', () => setTypeMode('offense'));
+        }
+    }
+
     // Inicialización del módulo
     initNavigation();
     initPokedexEvents();
     fetchPokedex();
+    initTypeButtons();
+    initTypeChartEvents();
 });

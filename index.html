@@ -19,7 +19,7 @@
             <button class="nav-btn" data-tab="home">Inicio</button>
             <button class="nav-btn active" data-tab="pokedex">Pokédex</button>
             <button class="nav-btn" data-tab="type-chart">
-                Tabla de Tipos <span class="badge">Próximamente</span>
+                Tabla de Tipos
             </button>
         </nav>
     </header>
@@ -43,11 +43,11 @@
                         <p>Consulta rápida de Pokédex conectada con PokéAPI y con sprites de pokemondb.net para analizar rivales al instante.</p>
                         <span class="status-tag active-tag">Disponible</span>
                     </div>
-                    <div class="feature-card disabled-feature">
+                    <div class="feature-card">
                         <div class="feature-icon" aria-hidden="true">⚡</div>
                         <h3>Tabla de Tipos Interactiva</h3>
                         <p>Cálculo de eficiencias de tipos, debilidades y multiplicadores de daño en tiempo real con una interfaz estilizada.</p>
-                        <span class="status-tag">Próximamente</span>
+                        <span class="status-tag active-tag">Disponible</span>
                     </div>
                 </div>
             </div>
@@ -89,16 +89,51 @@
             </div>
         </section>
 
-        <!-- Vista Tabla de Tipos (En desarrollo) -->
+        <!-- Vista Tabla de Tipos -->
         <section id="type-chart-view" class="tab-view view-hidden">
-            <div class="hero-card coming-soon-card">
-                <div class="coming-soon-icon">⚡</div>
-                <span class="subtitle">Estado del Módulo</span>
-                <h2 class="pokemon-title">Tabla de Tipos</h2>
-                <div class="badge-large">Próximamente / En desarrollo</div>
-                <p class="hero-description" style="margin-top: 1.5rem; margin-bottom: 0;">
-                    Estamos trabajando en una calculadora interactiva de efectividad de tipos, multiplicadores de daño y cobertura táctica para <strong>Pokémon Champions</strong>.
-                </p>
+            <div class="type-chart-header">
+                <div class="type-chart-title-container">
+                    <h2 class="section-title">Análisis de Tipos</h2>
+                    <p class="type-chart-description">Selecciona 1 o 2 tipos para calcular las efectividades y multiplicadores de daño en tiempo real.</p>
+                </div>
+                <!-- Selector de Modo: Defensa / Ataque -->
+                <div class="mode-selector" role="tablist" aria-label="Modo de Análisis">
+                    <button id="mode-defense-btn" class="mode-btn active" role="tab" aria-selected="true" data-mode="defense">
+                        🛡️ Defensa
+                    </button>
+                    <button id="mode-offense-btn" class="mode-btn" role="tab" aria-selected="false" data-mode="offense">
+                        ⚔️ Ataque
+                    </button>
+                </div>
+            </div>
+
+            <div class="type-calculator-card">
+                <!-- Barra de Estado / Selección Actual -->
+                <div class="selection-bar">
+                    <div class="selected-types-container">
+                        <span class="selection-label">Tipos Seleccionados:</span>
+                        <div id="selected-types-list" class="selected-types-list">
+                            <span class="placeholder-text">Ningún tipo seleccionado (haz clic en los botones de abajo)</span>
+                        </div>
+                    </div>
+                    <button id="clear-types-btn" class="clear-btn hidden" title="Limpiar selección">
+                        🗑️ Limpiar Selección
+                    </button>
+                </div>
+
+                <!-- Selector de Tipos Grid (18 tipos) -->
+                <div class="type-buttons-grid" id="type-buttons-grid" aria-label="Selección de tipos Pokémon">
+                    <!-- Se renderizan dinámicamente mediante JS -->
+                </div>
+            </div>
+
+            <!-- Panel de Resultados de Cobertura -->
+            <div id="type-results-container" class="type-results-container">
+                <div class="empty-results-card">
+                    <div class="empty-icon">⚡</div>
+                    <h3>Selecciona un Tipo</h3>
+                    <p>Elige al menos un tipo de Pokémon para desplegar el desglose defensivo u ofensivo.</p>
+                </div>
             </div>
         </section>
     </main>
@@ -107,6 +142,7 @@
         <p>© 2025 Pokémon Champions Companion. No afiliado con Nintendo, Game Freak o The Pokémon Company.</p>
     </footer>
 
+    <script src="src/types-data.js"></script>
     <script src="src/app.js"></script>
 </body>
 </html>
