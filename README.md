@@ -53,11 +53,13 @@ Este proyecto utiliza el flujo oficial de despliegue basado en **GitHub Actions*
 
 ### Pasos para activar GitHub Pages en tu repositorio:
 
+> ⚠️ **IMPORTANTE:** Si el build de GitHub Actions da un error como `Get Pages site failed: HttpError: Not Found`, es porque GitHub Pages no ha sido habilitado inicialmente en los ajustes del repositorio.
+
 1. Entra a tu repositorio en GitHub.
 2. Dirígete a la pestaña **Settings** (Configuración) > **Pages**.
 3. En la sección **Build and deployment**:
-   - Cambia el **Source** de *Deploy from a branch* a **GitHub Actions**.
-4. ¡Listo! Cada vez que hagas un `push` a la rama principal (`main`), el workflow empaquetará y desplegará automáticamente la aplicación en GitHub Pages.
+   - Cambia la opción **Source** de *Deploy from a branch* a **GitHub Actions**.
+4. Vuelve a la pestaña **Actions** de GitHub y reejecuta el workflow (*Re-run all jobs*) o realiza un nuevo commit. ¡Listo! La aplicación se desplegará automáticamente.
 
 ---
 
