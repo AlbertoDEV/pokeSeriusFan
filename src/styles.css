@@ -734,18 +734,24 @@ body {
     position: relative;
 }
 
-.type-btn-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: var(--type-color);
-    box-shadow: 0 0 6px var(--type-color);
+.type-icon-wrapper {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--type-color);
+    transition: color 0.2s ease, transform 0.2s ease;
 }
 
 .type-btn:hover {
     border-color: var(--type-color);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.type-btn:hover .type-icon-wrapper {
+    transform: scale(1.15);
 }
 
 .type-btn.selected {
@@ -756,9 +762,8 @@ body {
     box-shadow: 0 4px 15px var(--type-color);
 }
 
-.type-btn.selected .type-btn-dot {
-    background-color: #ffffff;
-    box-shadow: none;
+.type-btn.selected .type-icon-wrapper {
+    color: #ffffff;
 }
 
 .type-btn.selected::after {
@@ -783,7 +788,7 @@ body {
 .type-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.45rem;
     padding: 0.3rem 0.75rem;
     border-radius: var(--radius-sm);
     color: #ffffff;
@@ -793,6 +798,15 @@ body {
     letter-spacing: 0.5px;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.type-badge-icon {
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
 }
 
 .remove-badge-btn {
