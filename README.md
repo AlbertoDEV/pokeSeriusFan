@@ -47,19 +47,20 @@ No se requieren herramientas de compilación o servidores complejos para ejecuta
 
 ---
 
-## ⚙️ Configuración de Despliegue en GitHub Pages
+## ⚙️ Configuración Única de GitHub Pages en el Repositorio
 
-Este proyecto utiliza el flujo oficial de despliegue basado en **GitHub Actions** (`.github/workflows/deploy.yml`).
+El flujo de despliegue está totalmente automatizado con **GitHub Actions** (`.github/workflows/deploy.yml`).
 
-### Pasos para activar GitHub Pages en tu repositorio:
+### 📌 Paso imprescindible para habilitar el despliegue:
 
-> ⚠️ **IMPORTANTE:** Si el build de GitHub Actions da un error como `Get Pages site failed: HttpError: Not Found`, es porque GitHub Pages no ha sido habilitado inicialmente en los ajustes del repositorio.
+Para que GitHub Actions tenga permiso de desplegar el sitio, debes cambiar el origen de Pages en la interfaz gráfica de GitHub por única vez:
 
-1. Entra a tu repositorio en GitHub.
-2. Dirígete a la pestaña **Settings** (Configuración) > **Pages**.
-3. En la sección **Build and deployment**:
-   - Cambia la opción **Source** de *Deploy from a branch* a **GitHub Actions**.
-4. Vuelve a la pestaña **Actions** de GitHub y reejecuta el workflow (*Re-run all jobs*) o realiza un nuevo commit. ¡Listo! La aplicación se desplegará automáticamente.
+1. Ve a la pestaña **Settings** (Configuración) de este repositorio en GitHub.
+2. En el menú lateral izquierdo, haz clic en **Pages**.
+3. En la sección **Build and deployment** > **Source**, cambia la selección de `Deploy from a branch` a **GitHub Actions**.
+4. Ve a la pestaña **Actions**, selecciona el workflow fallido y haz clic en **Re-run all jobs** (o simplemente empuja un nuevo commit a `main`).
+
+¡Listo! El despliegue se completará exitosamente y tu web estará publicada en GitHub Pages.
 
 ---
 
