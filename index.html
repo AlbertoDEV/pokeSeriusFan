@@ -67,9 +67,26 @@
                     <h2 class="section-title">Pokédex Táctica</h2>
                     <span class="pokedex-count" id="pokedex-count">Cargando Pokémon...</span>
                 </div>
-                <div class="search-box">
-                    <span class="search-icon" aria-hidden="true">🔍</span>
-                    <input type="text" id="pokedex-search" placeholder="Buscar por nombre o número (ej. Pikachu o 25, #0025)..." autocomplete="off" aria-label="Buscar Pokémon por nombre o número">
+                <div class="pokedex-controls">
+                    <div class="gen-filter-box">
+                        <select id="pokedex-gen-filter" class="gen-select" aria-label="Filtrar por Generación">
+                            <option value="all">Todas las Generaciones (I - IX)</option>
+                            <option value="champions">🏆 Pokémon Champions (Meta)</option>
+                            <option value="gen1">Generación I (Kanto #0001 - #0151)</option>
+                            <option value="gen2">Generación II (Johto #0152 - #0251)</option>
+                            <option value="gen3">Generación III (Hoenn #0252 - #0386)</option>
+                            <option value="gen4">Generación IV (Sinnoh #0387 - #0493)</option>
+                            <option value="gen5">Generación V (Unova #0494 - #0649)</option>
+                            <option value="gen6">Generación VI (Kalos #0650 - #0721)</option>
+                            <option value="gen7">Generación VII (Alola #0722 - #0809)</option>
+                            <option value="gen8">Generación VIII (Galar/Hisui #0810 - #0905)</option>
+                            <option value="gen9">Generación IX (Paldea #0906 - #1025)</option>
+                        </select>
+                    </div>
+                    <div class="search-box">
+                        <span class="search-icon" aria-hidden="true">🔍</span>
+                        <input type="text" id="pokedex-search" placeholder="Buscar por nombre o número (ej. Pikachu o 25, #0025)..." autocomplete="off" aria-label="Buscar Pokémon por nombre o número">
+                    </div>
                 </div>
             </div>
 

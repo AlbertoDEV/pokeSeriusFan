@@ -31,8 +31,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 rival2: null
             }
         },
+        selectedGen: 'all',
         // Caché de detalles cargados de PokéAPI para no repetir peticiones
-        pokemonCache: {}
+        pokemonCache: {},
+        // Caché de detalles individuales de movimientos
+        moveDetailsCache: JSON.parse(localStorage.getItem('pkmn_champions_move_details_cache') || '{}')
+    };
+
+    // Configuración de Generaciones y Mapeo
+    const GENERATION_RANGES = {
+        gen1: { min: 1, max: 151, name: 'Gen I (Kanto)' },
+        gen2: { min: 152, max: 251, name: 'Gen II (Johto)' },
+        gen3: { min: 252, max: 386, name: 'Gen III (Hoenn)' },
+        gen4: { min: 387, max: 493, name: 'Gen IV (Sinnoh)' },
+        gen5: { min: 494, max: 649, name: 'Gen V (Unova)' },
+        gen6: { min: 650, max: 721, name: 'Gen VI (Kalos)' },
+        gen7: { min: 722, max: 809, name: 'Gen VII (Alola)' },
+        gen8: { min: 810, max: 905, name: 'Gen VIII (Galar/Hisui)' },
+        gen9: { min: 906, max: 1025, name: 'Gen IX (Paldea)' }
+    };
+
+    // Pokémon representativos de meta competitivo / Champions
+    const CHAMPIONS_POKEMON_IDS = new Set([
+        6, 9, 25, 94, 130, 149, 150, 212, 248, 257, 282, 373, 376, 384, 445, 448, 468, 479,
+        530, 637, 658, 681, 700, 778, 887, 987, 990, 1017
+    ]);
+
+    const VERSION_GROUP_TO_GEN = {
+        'red-blue': 'gen1', 'yellow': 'gen1',
+        'gold-silver': 'gen2', 'crystal': 'gen2',
+        'ruby-sapphire': 'gen3', 'emerald': 'gen3', 'firered-leafgreen': 'gen3', 'colosseum': 'gen3', 'xd': 'gen3',
+        'diamond-pearl': 'gen4', 'platinum': 'gen4', 'heartgold-soulsilver': 'gen4',
+        'black-white': 'gen5', 'black-2-white-2': 'gen5',
+        'x-y': 'gen6', 'omega-ruby-alpha-sapphire': 'gen6',
+        'sun-moon': 'gen7', 'ultra-sun-ultra-moon': 'gen7', 'lets-go-pikachu-lets-go-eevee': 'gen7',
+        'sword-shield': 'gen8', 'brilliant-diamond-and-shining-pearl': 'gen8', 'legends-arceus': 'gen8',
+        'scarlet-violet': 'gen9'
+    };
+
+    const LEARN_METHOD_LABELS = {
+        'level-up': 'Nivel',
+        'machine': 'MT/MO',
+        'egg': 'Huevo',
+        'tutor': 'Tutor'
     };
 
     // Referencias al DOM
@@ -45,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
             matchup: document.getElementById('matchup-view')
         },
         pokedexSearch: document.getElementById('pokedex-search'),
+        pokedexGenFilter: document.getElementById('pokedex-gen-filter'),
         pokedexCount: document.getElementById('pokedex-count'),
         pokedexGrid: document.getElementById('pokedex-grid'),
         pokedexLoader: document.getElementById('pokedex-loader'),
@@ -341,6 +383,46 @@ document.addEventListener('DOMContentLoaded', () => {
             isHidden: a.is_hidden
         }));
 
+        // Estructuración de movimientos agrupados por Generación
+        const movesByGen = {
+            gen1: [], gen2: [], gen3: [], gen4: [], gen5: [],
+            gen6: [], gen7: [], gen8: [], gen9: []
+        };
+
+        if (Array.isArray(data.moves)) {
+            data.moves.forEach(mItem => {
+                const moveName = mItem.move.name;
+
+                mItem.version_group_details.forEach(vgd => {
+                    const vgName = vgd.version_group.name;
+                    const genKey = VERSION_GROUP_TO_GEN[vgName];
+
+                    if (genKey && movesByGen[genKey]) {
+                        const exists = movesByGen[genKey].some(m => m.name === moveName);
+                        if (!exists) {
+                            movesByGen[genKey].push({
+                                name: moveName,
+                                learnMethod: vgd.move_learn_method.name,
+                                level: vgd.level_learned_at
+                            });
+                        }
+                    }
+                });
+            });
+        }
+
+        // Ordenar movimientos de cada generación
+        Object.keys(movesByGen).forEach(gen => {
+            movesByGen[gen].sort((a, b) => {
+                if (a.learnMethod === 'level-up' && b.learnMethod === 'level-up') {
+                    return a.level - b.level;
+                }
+                if (a.learnMethod === 'level-up') return -1;
+                if (b.learnMethod === 'level-up') return 1;
+                return a.name.localeCompare(b.name);
+            });
+        });
+
         const details = {
             id: data.id,
             name: data.name,
@@ -354,11 +436,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 specialDefense: stats['special-defense'] || 0,
                 speed: stats.speed || 0
             },
-            abilities
+            abilities,
+            movesByGen
         };
 
         state.pokemonCache[id] = details;
         return details;
+    }
+
+    async function fetchMoveDetails(moveName) {
+        if (state.moveDetailsCache[moveName]) {
+            return state.moveDetailsCache[moveName];
+        }
+
+        try {
+            const response = await fetch(`https://pokeapi.co/api/v2/move/${moveName}`);
+            if (!response.ok) {
+                return { name: moveName, type: 'normal', category: 'status', power: '-', accuracy: '-' };
+            }
+            const data = await response.json();
+
+            const moveInfo = {
+                id: data.id,
+                name: data.name,
+                type: data.type?.name || 'normal',
+                category: data.damage_class?.name || 'status',
+                power: data.power !== null && data.power !== undefined ? data.power : '-',
+                accuracy: data.accuracy !== null && data.accuracy !== undefined ? data.accuracy : '-'
+            };
+
+            state.moveDetailsCache[moveName] = moveInfo;
+            try {
+                localStorage.setItem('pkmn_champions_move_details_cache', JSON.stringify(state.moveDetailsCache));
+            } catch (e) {
+                // Si se llena la cuota de localStorage, continua normalmente en memoria
+            }
+            return moveInfo;
+        } catch (e) {
+            console.error(`Error al obtener detalle de movimiento ${moveName}:`, e);
+            return { name: moveName, type: 'normal', category: 'status', power: '-', accuracy: '-' };
+        }
     }
 
     async function openPokemonModal(id, name) {
@@ -518,6 +635,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     ` : ''}
                 </div>
             </div>
+
+            <div class="modal-section">
+                <div class="moveset-header">
+                    <h3 class="modal-section-title">⚔️ Movimientos y Ataques (Moveset)</h3>
+                    <div class="moves-gen-selector">
+                        <span class="moves-gen-label">Generación:</span>
+                        <select id="modal-moves-gen-select" class="moves-gen-select">
+                            <option value="gen9" selected>Gen IX (Paldea)</option>
+                            <option value="gen8">Gen VIII (Galar/Hisui)</option>
+                            <option value="gen7">Gen VII (Alola)</option>
+                            <option value="gen6">Gen VI (Kalos)</option>
+                            <option value="gen5">Gen V (Unova)</option>
+                            <option value="gen4">Gen IV (Sinnoh)</option>
+                            <option value="gen3">Gen III (Hoenn)</option>
+                            <option value="gen2">Gen II (Johto)</option>
+                            <option value="gen1">Gen I (Kanto)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="modal-moves-container" class="moveset-container"></div>
+            </div>
         `;
 
         elements.modalBodyContainer.innerHTML = html;
@@ -534,6 +673,112 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderPokemonModalDetails(details);
             });
         }
+
+        // Configurar selector de generación de movimientos
+        const movesGenSelect = document.getElementById('modal-moves-gen-select');
+        if (movesGenSelect) {
+            // Seleccionar por defecto la gen más reciente en la que tenga movimientos
+            let defaultGen = 'gen9';
+            const availableGens = Object.keys(details.movesByGen || {}).reverse();
+            for (const g of availableGens) {
+                if (details.movesByGen[g] && details.movesByGen[g].length > 0) {
+                    defaultGen = g;
+                    break;
+                }
+            }
+
+            movesGenSelect.value = defaultGen;
+
+            renderMovesetForGen(details, defaultGen);
+
+            movesGenSelect.addEventListener('change', (e) => {
+                renderMovesetForGen(details, e.target.value);
+            });
+        }
+    }
+
+    async function renderMovesetForGen(details, genKey) {
+        const movesContainer = document.getElementById('modal-moves-container');
+        if (!movesContainer) return;
+
+        const movesList = details.movesByGen?.[genKey] || [];
+
+        if (movesList.length === 0) {
+            movesContainer.innerHTML = `
+                <div class="no-types-msg" style="padding: 1rem; text-align: center;">
+                    Este Pokémon no posee movimientos aprendibles registrados en ${GENERATION_RANGES[genKey]?.name || genKey}.
+                </div>
+            `;
+            return;
+        }
+
+        movesContainer.innerHTML = `
+            <div class="loader-container" style="padding: 1.5rem;">
+                <div class="pokeball-spinner" style="width:32px; height:32px;" aria-hidden="true"></div>
+                <p class="loader-text" style="font-size:0.85rem;">Cargando detalles de ${movesList.length} ataques de ${GENERATION_RANGES[genKey]?.name || genKey}...</p>
+            </div>
+        `;
+
+        // Obtener detalles de cada movimiento usando caché
+        const moveDetailsPromises = movesList.map(async (m) => {
+            const detail = await fetchMoveDetails(m.name);
+            return {
+                ...m,
+                ...detail
+            };
+        });
+
+        const fullMoves = await Promise.all(moveDetailsPromises);
+
+        const categoryMap = {
+            physical: { label: 'Físico 💥', class: 'category-physical' },
+            special: { label: 'Especial ✨', class: 'category-special' },
+            status: { label: 'Estado 🛡️', class: 'category-status' }
+        };
+
+        let tableHtml = `
+            <div class="moves-table-container">
+                <table class="moves-table">
+                    <thead>
+                        <tr>
+                            <th>Movimiento</th>
+                            <th>Tipo</th>
+                            <th>Cat.</th>
+                            <th>Pot.</th>
+                            <th>Prec.</th>
+                            <th>Método</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${fullMoves.map(m => {
+                            const tInfo = POKEMON_TYPES[m.type] || { color: '#64748B', name: capitalize(m.type) };
+                            const catInfo = categoryMap[m.category] || categoryMap.status;
+                            const methodLabel = LEARN_METHOD_LABELS[m.learnMethod] || capitalize(m.learnMethod);
+                            const learnText = m.learnMethod === 'level-up' ? `Niv. ${m.level}` : methodLabel;
+
+                            return `
+                                <tr>
+                                    <td class="move-name-cell">${capitalize(m.name.replace(/-/g, ' '))}</td>
+                                    <td>
+                                        <span class="type-badge" style="background-color: ${tInfo.color}; font-size: 0.7rem; padding: 0.15rem 0.4rem;">
+                                            ${tInfo.name}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="category-badge ${catInfo.class}">${catInfo.label}</span>
+                                    </td>
+                                    <td><strong>${m.power}</strong></td>
+                                    <td>${m.accuracy}</td>
+                                    <td><span class="method-badge">${learnText}</span></td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        movesContainer.innerHTML = tableHtml;
     }
 
     /* ==========================================================================
@@ -602,23 +847,35 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.pokedexGrid.appendChild(fragment);
     }
 
-    function filterPokemon(query) {
-        const cleanQuery = query.toLowerCase().trim();
+    function filterPokemon() {
+        const query = elements.pokedexSearch ? elements.pokedexSearch.value.toLowerCase().trim() : '';
+        const selectedGen = elements.pokedexGenFilter ? elements.pokedexGenFilter.value : 'all';
 
-        if (!cleanQuery) {
-            state.filteredPokemon = [...state.allPokemon];
-        } else {
-            const numberQuery = cleanQuery.replace(/^#+/, '');
+        state.selectedGen = selectedGen;
+        const numberQuery = query.replace(/^#+/, '');
 
-            state.filteredPokemon = state.allPokemon.filter(pokemon => {
-                const nameMatch = pokemon.name.toLowerCase().includes(cleanQuery);
-                const idMatch = String(pokemon.id) === numberQuery ||
-                                String(pokemon.id).padStart(4, '0').includes(numberQuery) ||
-                                formatPokedexNumber(pokemon.id).toLowerCase().includes(cleanQuery);
+        state.filteredPokemon = state.allPokemon.filter(pokemon => {
+            // 1. Filtrado por Generación
+            let genMatch = true;
+            if (selectedGen === 'champions') {
+                genMatch = CHAMPIONS_POKEMON_IDS.has(pokemon.id);
+            } else if (GENERATION_RANGES[selectedGen]) {
+                const range = GENERATION_RANGES[selectedGen];
+                genMatch = pokemon.id >= range.min && pokemon.id <= range.max;
+            }
 
-                return nameMatch || idMatch;
-            });
-        }
+            if (!genMatch) return false;
+
+            // 2. Filtrado por Texto o ID
+            if (!query) return true;
+
+            const nameMatch = pokemon.name.toLowerCase().includes(query);
+            const idMatch = String(pokemon.id) === numberQuery ||
+                            String(pokemon.id).padStart(4, '0').includes(numberQuery) ||
+                            formatPokedexNumber(pokemon.id).toLowerCase().includes(query);
+
+            return nameMatch || idMatch;
+        });
 
         renderPokedexGrid(state.filteredPokemon);
     }
@@ -668,8 +925,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initPokedexEvents() {
         if (elements.pokedexSearch) {
-            elements.pokedexSearch.addEventListener('input', (e) => {
-                filterPokemon(e.target.value);
+            elements.pokedexSearch.addEventListener('input', () => {
+                filterPokemon();
+            });
+        }
+
+        if (elements.pokedexGenFilter) {
+            elements.pokedexGenFilter.addEventListener('change', () => {
+                filterPokemon();
             });
         }
 

@@ -119,6 +119,172 @@ body {
     gap: 0.5rem;
 }
 
+/* ==========================================================================
+   Sección de Movimientos / Ataques (Moveset en Modal)
+   ========================================================================== */
+.moveset-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.moveset-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.moves-gen-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.moves-gen-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.moves-gen-select {
+    background-color: var(--bg-dark);
+    border: 1px solid var(--card-border);
+    color: var(--pokemon-yellow);
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-sm);
+    outline: none;
+    cursor: pointer;
+}
+
+.moves-gen-select:hover, .moves-gen-select:focus {
+    border-color: var(--pokemon-yellow);
+}
+
+.moves-tabs-row {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.75rem;
+    scrollbar-width: thin;
+}
+
+.moves-tab-btn {
+    background-color: var(--bg-dark);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.moves-tab-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--pokemon-blue);
+}
+
+.moves-tab-btn.active {
+    background-color: var(--pokemon-blue);
+    color: #ffffff;
+    border-color: var(--pokemon-blue);
+}
+
+/* Badges de Categoría de Movimiento */
+.category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.category-physical {
+    background-color: rgba(227, 53, 13, 0.2);
+    color: #F87171;
+    border: 1px solid rgba(227, 53, 13, 0.4);
+}
+
+.category-special {
+    background-color: rgba(42, 117, 211, 0.2);
+    color: #60A5FA;
+    border: 1px solid rgba(42, 117, 211, 0.4);
+}
+
+.category-status {
+    background-color: rgba(148, 163, 184, 0.2);
+    color: #CBD5E1;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+/* Badge Método de Aprendizaje */
+.method-badge {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background-color: var(--bg-dark);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+}
+
+/* Tabla / Grid de Movimientos */
+.moves-table-container {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-dark);
+}
+
+.moves-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    text-align: left;
+}
+
+.moves-table th {
+    background-color: var(--card-bg);
+    color: var(--text-secondary);
+    font-weight: 700;
+    padding: 0.6rem 0.75rem;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    border-bottom: 1px solid var(--card-border);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+}
+
+.moves-table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+}
+
+.moves-table tr:hover td {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.move-name-cell {
+    font-weight: 700;
+}
+
 .nav-btn.active {
     background-color: var(--primary-red);
     color: #ffffff;
@@ -325,11 +491,55 @@ body {
     font-weight: 500;
 }
 
+.pokedex-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.gen-filter-box {
+    position: relative;
+    min-width: 210px;
+}
+
+.gen-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background-color: var(--bg-dark);
+    border: 2px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394A3B8'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25rem;
+}
+
+.gen-select:focus, .gen-select:hover {
+    border-color: var(--pokemon-yellow);
+    box-shadow: 0 0 10px rgba(255, 203, 5, 0.3);
+}
+
+.gen-select option {
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+}
+
 .search-box {
     position: relative;
     flex: 1;
-    min-width: 280px;
-    max-width: 450px;
+    min-width: 240px;
+    max-width: 380px;
 }
 
 .search-icon {
