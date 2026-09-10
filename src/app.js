@@ -721,19 +721,22 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="modal-section">
                 <div class="moveset-header">
                     <h3 class="modal-section-title">⚔️ Movimientos y Ataques (Moveset)</h3>
-                    <div class="moves-gen-selector">
-                        <span class="moves-gen-label">Generación:</span>
-                        <select id="modal-moves-gen-select" class="moves-gen-select">
-                            <option value="gen9" selected>Gen IX (Paldea)</option>
-                            <option value="gen8">Gen VIII (Galar/Hisui)</option>
-                            <option value="gen7">Gen VII (Alola)</option>
-                            <option value="gen6">Gen VI (Kalos)</option>
-                            <option value="gen5">Gen V (Unova)</option>
-                            <option value="gen4">Gen IV (Sinnoh)</option>
-                            <option value="gen3">Gen III (Hoenn)</option>
-                            <option value="gen2">Gen II (Johto)</option>
-                            <option value="gen1">Gen I (Kanto)</option>
-                        </select>
+                    <div class="moves-controls-row">
+                        <input type="text" id="modal-moves-search" class="moves-search-input" placeholder="🔍 Buscar movimiento o tipo...">
+                        <div class="moves-gen-selector">
+                            <span class="moves-gen-label">Gen:</span>
+                            <select id="modal-moves-gen-select" class="moves-gen-select">
+                                <option value="gen9" selected>Gen IX (Paldea)</option>
+                                <option value="gen8">Gen VIII (Galar/Hisui)</option>
+                                <option value="gen7">Gen VII (Alola)</option>
+                                <option value="gen6">Gen VI (Kalos)</option>
+                                <option value="gen5">Gen V (Unova)</option>
+                                <option value="gen4">Gen IV (Sinnoh)</option>
+                                <option value="gen3">Gen III (Hoenn)</option>
+                                <option value="gen2">Gen II (Johto)</option>
+                                <option value="gen1">Gen I (Kanto)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -789,8 +792,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Configurar selector de generación de movimientos
+        // Configurar selector de generación y buscador de movimientos
         const movesGenSelect = document.getElementById('modal-moves-gen-select');
+        const movesSearchInput = document.getElementById('modal-moves-search');
+
         if (movesGenSelect) {
             // Seleccionar por defecto la gen más reciente en la que tenga movimientos
             let defaultGen = 'gen9';
@@ -807,6 +812,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderMovesetForGen(details, defaultGen);
 
             movesGenSelect.addEventListener('change', (e) => {
+                if (movesSearchInput) movesSearchInput.value = '';
                 renderMovesetForGen(details, e.target.value);
             });
         }
@@ -814,6 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function renderMovesetForGen(details, genKey) {
         const movesContainer = document.getElementById('modal-moves-container');
+        const movesSearchInput = document.getElementById('modal-moves-search');
         if (!movesContainer) return;
 
         const movesList = details.movesByGen?.[genKey] || [];
@@ -851,80 +858,112 @@ document.addEventListener('DOMContentLoaded', () => {
             status: { label: 'Estado 🛡️', class: 'category-status' }
         };
 
-        let tableHtml = `
-            <div class="moves-table-container">
-                <table class="moves-table">
-                    <thead>
-                        <tr>
-                            <th>Movimiento</th>
-                            <th>Tipo</th>
-                            <th>Cat.</th>
-                            <th>Pot.</th>
-                            <th>Prec.</th>
-                            <th>Método</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${fullMoves.map(m => {
-                            const tInfo = POKEMON_TYPES[m.type] || { color: '#64748B', name: capitalize(m.type) };
-                            const catInfo = categoryMap[m.category] || categoryMap.status;
-                            const methodLabel = LEARN_METHOD_LABELS[m.learnMethod] || capitalize(m.learnMethod);
-                            const learnText = m.learnMethod === 'level-up' ? `Niv. ${m.level}` : methodLabel;
+        function displayFilteredMoves(filterQuery = '') {
+            const cleanQuery = filterQuery.toLowerCase().trim();
 
-                            const spanishMoveName = m.spanishName || capitalize(m.name.replace(/-/g, ' '));
-                            return `
-                                <tr class="move-row" data-move-name="${m.name}">
-                                    <td class="move-name-cell">
-                                        <div class="move-title-es">${spanishMoveName}</div>
-                                        <div class="move-title-en">${capitalize(m.name.replace(/-/g, ' '))}</div>
-                                    </td>
-                                    <td>
-                                        <span class="type-badge" style="background-color: ${tInfo.color}; font-size: 0.7rem; padding: 0.15rem 0.4rem;">
-                                            ${tInfo.name}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="category-badge ${catInfo.class}">${catInfo.label}</span>
-                                    </td>
-                                    <td><strong>${m.power}</strong></td>
-                                    <td>${m.accuracy}</td>
-                                    <td><span class="method-badge">${learnText}</span></td>
-                                </tr>
-                                <tr class="move-detail-row hidden" id="move-detail-${m.name}">
-                                    <td colspan="6">
-                                        <div class="move-detail-content">
-                                            <strong>📖 ${spanishMoveName}:</strong> ${m.description || 'Sin descripción disponible.'}
-                                        </div>
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-
-        movesContainer.innerHTML = tableHtml;
-
-        // Configurar clics en las filas de movimientos para expandir/colapsar
-        const moveRows = movesContainer.querySelectorAll('.move-row');
-        moveRows.forEach(row => {
-            row.addEventListener('click', () => {
-                const moveName = row.getAttribute('data-move-name');
-                const detailRow = document.getElementById(`move-detail-${moveName}`);
-                if (detailRow) {
-                    const isHidden = detailRow.classList.contains('hidden');
-                    // Cerrar los demás
-                    movesContainer.querySelectorAll('.move-detail-row').forEach(r => r.classList.add('hidden'));
-                    movesContainer.querySelectorAll('.move-row').forEach(r => r.classList.remove('expanded'));
-
-                    if (isHidden) {
-                        detailRow.classList.remove('hidden');
-                        row.classList.add('expanded');
-                    }
-                }
+            const filteredList = fullMoves.filter(m => {
+                if (!cleanQuery) return true;
+                const esName = (m.spanishName || '').toLowerCase();
+                const enName = (m.name || '').toLowerCase().replace(/-/g, ' ');
+                const typeName = (POKEMON_TYPES[m.type]?.name || m.type || '').toLowerCase();
+                return esName.includes(cleanQuery) || enName.includes(cleanQuery) || typeName.includes(cleanQuery);
             });
-        });
+
+            if (filteredList.length === 0) {
+                movesContainer.innerHTML = `
+                    <div class="no-types-msg" style="padding: 1.5rem; text-align: center;">
+                        No se encontraron ataques que coincidan con "<strong>${filterQuery}</strong>".
+                    </div>
+                `;
+                return;
+            }
+
+            let tableHtml = `
+                <div class="moves-table-container">
+                    <table class="moves-table">
+                        <thead>
+                            <tr>
+                                <th>Movimiento</th>
+                                <th>Tipo</th>
+                                <th>Cat.</th>
+                                <th>Pot.</th>
+                                <th>Prec.</th>
+                                <th>Método</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filteredList.map(m => {
+                                const tInfo = POKEMON_TYPES[m.type] || { color: '#64748B', name: capitalize(m.type) };
+                                const catInfo = categoryMap[m.category] || categoryMap.status;
+                                const methodLabel = LEARN_METHOD_LABELS[m.learnMethod] || capitalize(m.learnMethod);
+                                const learnText = m.learnMethod === 'level-up' ? `Niv. ${m.level}` : methodLabel;
+
+                                const spanishMoveName = m.spanishName || capitalize(m.name.replace(/-/g, ' '));
+                                return `
+                                    <tr class="move-row" data-move-name="${m.name}">
+                                        <td class="move-name-cell">
+                                            <div class="move-title-es">${spanishMoveName}</div>
+                                            <div class="move-title-en">${capitalize(m.name.replace(/-/g, ' '))}</div>
+                                        </td>
+                                        <td>
+                                            <span class="type-badge" style="background-color: ${tInfo.color}; font-size: 0.7rem; padding: 0.15rem 0.4rem;">
+                                                ${tInfo.name}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="category-badge ${catInfo.class}">${catInfo.label}</span>
+                                        </td>
+                                        <td><strong>${m.power}</strong></td>
+                                        <td>${m.accuracy}</td>
+                                        <td><span class="method-badge">${learnText}</span></td>
+                                    </tr>
+                                    <tr class="move-detail-row hidden" id="move-detail-${m.name}">
+                                        <td colspan="6">
+                                            <div class="move-detail-content">
+                                                <strong>📖 ${spanishMoveName}:</strong> ${m.description || 'Sin descripción disponible.'}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            movesContainer.innerHTML = tableHtml;
+
+            // Configurar clics en las filas de movimientos para expandir/colapsar
+            const moveRows = movesContainer.querySelectorAll('.move-row');
+            moveRows.forEach(row => {
+                row.addEventListener('click', () => {
+                    const moveName = row.getAttribute('data-move-name');
+                    const detailRow = document.getElementById(`move-detail-${moveName}`);
+                    if (detailRow) {
+                        const isHidden = detailRow.classList.contains('hidden');
+                        // Cerrar los demás
+                        movesContainer.querySelectorAll('.move-detail-row').forEach(r => r.classList.add('hidden'));
+                        movesContainer.querySelectorAll('.move-row').forEach(r => r.classList.remove('expanded'));
+
+                        if (isHidden) {
+                            detailRow.classList.remove('hidden');
+                            row.classList.add('expanded');
+                        }
+                    }
+                });
+            });
+        }
+
+        // Render inicial
+        const initialQuery = movesSearchInput ? movesSearchInput.value : '';
+        displayFilteredMoves(initialQuery);
+
+        // Escuchar cambios en el input de búsqueda
+        if (movesSearchInput) {
+            movesSearchInput.oninput = (e) => {
+                displayFilteredMoves(e.target.value);
+            };
+        }
     }
 
     /* ==========================================================================
