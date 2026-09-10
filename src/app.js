@@ -35,7 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Caché de detalles cargados de PokéAPI para no repetir peticiones
         pokemonCache: {},
         // Caché de detalles individuales de movimientos
-        moveDetailsCache: JSON.parse(localStorage.getItem('pkmn_champions_move_details_cache') || '{}')
+        moveDetailsCache: JSON.parse(localStorage.getItem('pkmn_champions_move_details_cache') || '{}'),
+        // Caché de detalles individuales de habilidades (traducción y descripción)
+        abilityDetailsCache: JSON.parse(localStorage.getItem('pkmn_champions_ability_details_cache') || '{}')
     };
 
     // Configuración de Generaciones y Mapeo
@@ -444,6 +446,64 @@ document.addEventListener('DOMContentLoaded', () => {
         return details;
     }
 
+    async function fetchAbilityDetails(abilityName) {
+        if (state.abilityDetailsCache[abilityName]) {
+            return state.abilityDetailsCache[abilityName];
+        }
+
+        try {
+            const response = await fetch(`https://pokeapi.co/api/v2/ability/${abilityName}`);
+            if (!response.ok) {
+                return {
+                    name: abilityName,
+                    spanishName: capitalize(abilityName.replace(/-/g, ' ')),
+                    description: 'Sin descripción disponible.'
+                };
+            }
+            const data = await response.json();
+
+            // Buscar nombre traducido al español
+            const esNameObj = data.names?.find(n => n.language.name === 'es');
+            const spanishName = esNameObj ? esNameObj.name : capitalize(data.name.replace(/-/g, ' '));
+
+            // Buscar descripción en español
+            let description = '';
+            const esFlavor = data.flavor_text_entries?.find(f => f.language.name === 'es');
+            if (esFlavor) {
+                description = esFlavor.flavor_text.replace(/[\n\f]/g, ' ');
+            } else {
+                const esEffect = data.effect_entries?.find(e => e.language.name === 'es');
+                if (esEffect) {
+                    description = esEffect.short_effect || esEffect.effect;
+                } else {
+                    const enFlavor = data.flavor_text_entries?.find(f => f.language.name === 'en');
+                    description = enFlavor ? enFlavor.flavor_text.replace(/[\n\f]/g, ' ') : 'Sin descripción disponible.';
+                }
+            }
+
+            const abilityInfo = {
+                name: data.name,
+                spanishName,
+                description
+            };
+
+            state.abilityDetailsCache[abilityName] = abilityInfo;
+            try {
+                localStorage.setItem('pkmn_champions_ability_details_cache', JSON.stringify(state.abilityDetailsCache));
+            } catch (e) {
+                // Si falla por cuota de localStorage, continuar en memoria
+            }
+            return abilityInfo;
+        } catch (e) {
+            console.error(`Error al obtener detalle de habilidad ${abilityName}:`, e);
+            return {
+                name: abilityName,
+                spanishName: capitalize(abilityName.replace(/-/g, ' ')),
+                description: 'Sin descripción disponible.'
+            };
+        }
+    }
+
     async function fetchMoveDetails(moveName) {
         if (state.moveDetailsCache[moveName]) {
             return state.moveDetailsCache[moveName];
@@ -452,17 +512,38 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`https://pokeapi.co/api/v2/move/${moveName}`);
             if (!response.ok) {
-                return { name: moveName, type: 'normal', category: 'status', power: '-', accuracy: '-' };
+                return { name: moveName, spanishName: capitalize(moveName.replace(/-/g, ' ')), type: 'normal', category: 'status', power: '-', accuracy: '-', description: 'Sin descripción disponible.' };
             }
             const data = await response.json();
+
+            // Extraer nombre en español
+            const esNameObj = data.names?.find(n => n.language.name === 'es');
+            const spanishName = esNameObj ? esNameObj.name : capitalize(data.name.replace(/-/g, ' '));
+
+            // Extraer descripción en español
+            let description = '';
+            const esFlavor = data.flavor_text_entries?.find(f => f.language.name === 'es');
+            if (esFlavor) {
+                description = esFlavor.flavor_text.replace(/[\n\f]/g, ' ');
+            } else {
+                const esEffect = data.effect_entries?.find(e => e.language.name === 'es');
+                if (esEffect) {
+                    description = esEffect.short_effect || esEffect.effect;
+                } else {
+                    const enFlavor = data.flavor_text_entries?.find(f => f.language.name === 'en');
+                    description = enFlavor ? enFlavor.flavor_text.replace(/[\n\f]/g, ' ') : 'Sin descripción disponible.';
+                }
+            }
 
             const moveInfo = {
                 id: data.id,
                 name: data.name,
+                spanishName,
                 type: data.type?.name || 'normal',
                 category: data.damage_class?.name || 'status',
                 power: data.power !== null && data.power !== undefined ? data.power : '-',
-                accuracy: data.accuracy !== null && data.accuracy !== undefined ? data.accuracy : '-'
+                accuracy: data.accuracy !== null && data.accuracy !== undefined ? data.accuracy : '-',
+                description
             };
 
             state.moveDetailsCache[moveName] = moveInfo;
@@ -474,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return moveInfo;
         } catch (e) {
             console.error(`Error al obtener detalle de movimiento ${moveName}:`, e);
-            return { name: moveName, type: 'normal', category: 'status', power: '-', accuracy: '-' };
+            return { name: moveName, spanishName: capitalize(moveName.replace(/-/g, ' ')), type: 'normal', category: 'status', power: '-', accuracy: '-', description: 'Sin descripción disponible.' };
         }
     }
 
@@ -561,14 +642,15 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
 
             <div class="modal-section">
-                <h3 class="modal-section-title">✨ Habilidades Principales</h3>
+                <h3 class="modal-section-title">✨ Habilidades Principales <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">(Haz clic para ver descripción)</span></h3>
                 <div class="abilities-list">
                     ${details.abilities.map(a => `
-                        <span class="ability-tag ${a.isHidden ? 'hidden-ability' : ''}">
-                            ${capitalize(a.name.replace('-', ' '))} ${a.isHidden ? '(Oculta)' : ''}
-                        </span>
+                        <button type="button" class="ability-tag ${a.isHidden ? 'hidden-ability' : ''}" data-ability-name="${a.name}">
+                            ${capitalize(a.name.replace(/-/g, ' '))} ${a.isHidden ? '(Oculta)' : ''} ℹ️
+                        </button>
                     `).join('')}
                 </div>
+                <div id="modal-ability-description-box" class="ability-detail-box hidden"></div>
             </div>
 
             <div class="modal-section">
@@ -660,6 +742,39 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         elements.modalBodyContainer.innerHTML = html;
+
+        // Configurar clics en Habilidades
+        const abilityButtons = elements.modalBodyContainer.querySelectorAll('.ability-tag');
+        const abilityBox = document.getElementById('modal-ability-description-box');
+
+        abilityButtons.forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const abilityName = btn.getAttribute('data-ability-name');
+                if (!abilityName || !abilityBox) return;
+
+                if (!abilityBox.classList.contains('hidden') && abilityBox.getAttribute('data-active-ability') === abilityName) {
+                    abilityBox.classList.add('hidden');
+                    abilityBox.removeAttribute('data-active-ability');
+                    return;
+                }
+
+                abilityBox.classList.remove('hidden');
+                abilityBox.setAttribute('data-active-ability', abilityName);
+                abilityBox.innerHTML = `
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">
+                        Cargando información de la habilidad...
+                    </div>
+                `;
+
+                const aDetails = await fetchAbilityDetails(abilityName);
+                abilityBox.innerHTML = `
+                    <div class="ability-detail-title">
+                        <strong>${aDetails.spanishName}</strong> <span class="ability-original-name">(${capitalize(abilityName.replace(/-/g, ' '))})</span>
+                    </div>
+                    <div class="ability-detail-text">${aDetails.description}</div>
+                `;
+            });
+        });
 
         // Configurar botón de Mi Equipo dentro del modal
         const toggleBtn = document.getElementById('modal-team-toggle-btn');
@@ -756,9 +871,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             const methodLabel = LEARN_METHOD_LABELS[m.learnMethod] || capitalize(m.learnMethod);
                             const learnText = m.learnMethod === 'level-up' ? `Niv. ${m.level}` : methodLabel;
 
+                            const spanishMoveName = m.spanishName || capitalize(m.name.replace(/-/g, ' '));
                             return `
-                                <tr>
-                                    <td class="move-name-cell">${capitalize(m.name.replace(/-/g, ' '))}</td>
+                                <tr class="move-row" data-move-name="${m.name}">
+                                    <td class="move-name-cell">
+                                        <div class="move-title-es">${spanishMoveName}</div>
+                                        <div class="move-title-en">${capitalize(m.name.replace(/-/g, ' '))}</div>
+                                    </td>
                                     <td>
                                         <span class="type-badge" style="background-color: ${tInfo.color}; font-size: 0.7rem; padding: 0.15rem 0.4rem;">
                                             ${tInfo.name}
@@ -771,6 +890,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <td>${m.accuracy}</td>
                                     <td><span class="method-badge">${learnText}</span></td>
                                 </tr>
+                                <tr class="move-detail-row hidden" id="move-detail-${m.name}">
+                                    <td colspan="6">
+                                        <div class="move-detail-content">
+                                            <strong>📖 ${spanishMoveName}:</strong> ${m.description || 'Sin descripción disponible.'}
+                                        </div>
+                                    </td>
+                                </tr>
                             `;
                         }).join('')}
                     </tbody>
@@ -779,6 +905,26 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         movesContainer.innerHTML = tableHtml;
+
+        // Configurar clics en las filas de movimientos para expandir/colapsar
+        const moveRows = movesContainer.querySelectorAll('.move-row');
+        moveRows.forEach(row => {
+            row.addEventListener('click', () => {
+                const moveName = row.getAttribute('data-move-name');
+                const detailRow = document.getElementById(`move-detail-${moveName}`);
+                if (detailRow) {
+                    const isHidden = detailRow.classList.contains('hidden');
+                    // Cerrar los demás
+                    movesContainer.querySelectorAll('.move-detail-row').forEach(r => r.classList.add('hidden'));
+                    movesContainer.querySelectorAll('.move-row').forEach(r => r.classList.remove('expanded'));
+
+                    if (isHidden) {
+                        detailRow.classList.remove('hidden');
+                        row.classList.add('expanded');
+                    }
+                }
+            });
+        });
     }
 
     /* ==========================================================================
