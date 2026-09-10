@@ -1131,10 +1131,14 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.modalCloseBtn.addEventListener('click', closePokemonModal);
         }
 
-        // Cerrar modal al hacer clic en el overlay
+        // Cerrar modal al hacer clic en el overlay (solo si mousedown y click ocurrieron ambos en el overlay)
         if (elements.pokemonModal) {
+            let overlayMouseDownTarget = null;
+            elements.pokemonModal.addEventListener('mousedown', (e) => {
+                overlayMouseDownTarget = e.target;
+            });
             elements.pokemonModal.addEventListener('click', (e) => {
-                if (e.target === elements.pokemonModal) {
+                if (e.target === elements.pokemonModal && overlayMouseDownTarget === elements.pokemonModal) {
                     closePokemonModal();
                 }
             });
@@ -1917,8 +1921,14 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.selectModalCloseBtn.addEventListener('click', closeSlotSelectModal);
         }
         if (elements.selectPokemonModal) {
+            let selectOverlayMouseDownTarget = null;
+            elements.selectPokemonModal.addEventListener('mousedown', (e) => {
+                selectOverlayMouseDownTarget = e.target;
+            });
             elements.selectPokemonModal.addEventListener('click', (e) => {
-                if (e.target === elements.selectPokemonModal) closeSlotSelectModal();
+                if (e.target === elements.selectPokemonModal && selectOverlayMouseDownTarget === elements.selectPokemonModal) {
+                    closeSlotSelectModal();
+                }
             });
         }
         if (elements.slotSearchInput) {
