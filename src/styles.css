@@ -340,9 +340,10 @@ body {
     font-size: 1.1rem;
     pointer-events: none;
     opacity: 0.7;
+    z-index: 2;
 }
 
-#pokedex-search {
+.search-box input {
     width: 100%;
     padding: 0.75rem 1rem 0.75rem 2.8rem;
     background-color: var(--bg-dark);
@@ -355,12 +356,12 @@ body {
     outline: none;
 }
 
-#pokedex-search:focus {
+.search-box input:focus {
     border-color: var(--pokemon-blue);
     box-shadow: 0 0 12px rgba(42, 117, 211, 0.4);
 }
 
-#pokedex-search::placeholder {
+.search-box input::placeholder {
     color: var(--text-muted);
 }
 
@@ -1069,7 +1070,7 @@ body {
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    z-index: 10;
+    z-index: 20;
 }
 
 .modal-close-btn:hover {
@@ -1087,10 +1088,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 1rem;
     margin-bottom: 1.5rem;
     border-bottom: 1px solid var(--card-border);
     padding-bottom: 1rem;
+    padding-right: 2.8rem; /* Evita superposición con el botón de cierre */
 }
 
 .modal-title-box {
@@ -1718,6 +1721,7 @@ body {
     align-items: center;
     padding: 1.25rem 1.5rem;
     border-bottom: 1px solid var(--card-border);
+    padding-right: 2.8rem;
 }
 
 .select-modal-header h3 {
@@ -1811,6 +1815,52 @@ body {
     font-weight: 600;
     margin-top: 0.25rem;
     text-align: center;
+}
+
+/* Tarjetas de Fortalezas y Debilidades de Enfrentamiento */
+.matchup-grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.matchup-card {
+    background-color: var(--bg-dark);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+}
+
+.matchup-card.strength-card {
+    border-left: 4px solid #10B981;
+}
+
+.matchup-card.weakness-card {
+    border-left: 4px solid #EF4444;
+}
+
+.matchup-card-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.strength-card .matchup-card-title {
+    color: #34D399;
+}
+
+.weakness-card .matchup-card-title {
+    color: #F87171;
+}
+
+.matchup-item {
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
 }
 
 /* ==========================================================================
