@@ -1151,7 +1151,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return p.name.toLowerCase().includes(cleanQuery) ||
                    String(p.id) === numberQuery ||
                    formatPokedexNumber(p.id).toLowerCase().includes(cleanQuery);
-        }).slice(0, 48); // Limitar a los primeros 48 para rapidez visual en modal
+        });
 
         const fragment = document.createDocumentFragment();
 
