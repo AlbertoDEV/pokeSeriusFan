@@ -1181,7 +1181,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function assignPokemonToSlot(slotKey, id, name) {
-        // Asignar objeto básico temporalmente
         state.matchup.slots[slotKey] = { id, name, details: null };
         renderMatchupUI();
 
@@ -1205,7 +1204,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ? ['ally1', 'ally2', 'rival1', 'rival2']
             : ['ally1', 'rival1'];
 
-        // Renderizar slots
         activeSlotKeys.forEach(slotKey => {
             const slotElem = elements.slots[slotKey];
             if (!slotElem) return;
@@ -1262,7 +1260,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Renderizar panel de resultados del análisis
         renderMatchupAnalysis(activeSlotKeys);
     }
 
@@ -1282,7 +1279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="empty-results-card">
                     <div class="empty-icon">⚔️</div>
                     <h3>Selecciona un Pokémon en pista</h3>
-                    <p>Agrega Pokémon a los slots aliados o rivales para calcular la línea temporal de velocidad, coberturas dobles y matchups.</p>
+                    <p>Agrega Pokémon a los slots aliados o rivales para calcular la línea temporal de velocidad, fortalezas, debilidades y coberturas.</p>
                 </div>
             `;
             return;
@@ -1331,11 +1328,9 @@ document.addEventListener('DOMContentLoaded', () => {
             html += `<h3 class="analysis-title">🚨 Cobertura Colectiva de Aliados (Dobles 2v2)</h3>`;
 
             if (ally1 && ally2) {
-                // Calcular debilidades de cada uno
                 const def1 = calculateDefenseMatchups(ally1.types[0], ally1.types[1] || null);
                 const def2 = calculateDefenseMatchups(ally2.types[0], ally2.types[1] || null);
 
-                // Debilidades compartidas (x2 o x4)
                 const weakTypes1 = [...def1.x4.map(t => ({ id: t.id, name: t.name, color: t.color, mult: 4 })), ...def1.x2.map(t => ({ id: t.id, name: t.name, color: t.color, mult: 2 }))];
                 const weakTypes2 = [...def2.x4.map(t => ({ id: t.id, name: t.name, color: t.color, mult: 4 })), ...def2.x2.map(t => ({ id: t.id, name: t.name, color: t.color, mult: 2 }))];
 
@@ -1378,56 +1373,83 @@ document.addEventListener('DOMContentLoaded', () => {
             html += `</div>`;
         }
 
-        // 3. EFICIENCIA DE TIPOS RÁPIDA ENTRE PISTA (Matchup Quick Matrix)
+        // 3. DESGLOSE DETALLADO DE FORTALEZAS Y DEBILIDADES CONTRA EL ENEMIGO
         const alliesInField = activePokemons.filter(p => p.slotKey.startsWith('ally'));
         const rivalsInField = activePokemons.filter(p => p.slotKey.startsWith('rival'));
 
         if (alliesInField.length > 0 && rivalsInField.length > 0) {
             html += `
                 <div class="analysis-section-card">
-                    <h3 class="analysis-title">⚔️ Eficiencia de Tipos en Enfrentamiento</h3>
-                    <p class="type-chart-description">Análisis de efectividad directa entre Aliados y Rivales en pista:</p>
-                    <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
-                        ${alliesInField.map(a => {
-                            return rivalsInField.map(r => {
-                                // Efectividad de Aliado atacando a Rival
-                                let maxAllyToRival = 0;
-                                a.details.types.forEach(atkType => {
-                                    const mult1 = TYPE_CHART[atkType][r.details.types[0]] || 1;
-                                    const mult2 = r.details.types[1] ? (TYPE_CHART[atkType][r.details.types[1]] || 1) : 1;
-                                    const total = mult1 * mult2;
-                                    if (total > maxAllyToRival) maxAllyToRival = total;
-                                });
+                    <h3 class="analysis-title">🛡️ vs ⚔️ Análisis Detallado: Fortalezas y Debilidades</h3>
+                    <p class="type-chart-description">Desglose táctico directo de ventajas y vulnerabilidades entre Aliados y Rivales:</p>
 
-                                // Efectividad de Rival atacando a Aliado
-                                let maxRivalToAlly = 0;
-                                r.details.types.forEach(atkType => {
-                                    const mult1 = TYPE_CHART[atkType][a.details.types[0]] || 1;
-                                    const mult2 = a.details.types[1] ? (TYPE_CHART[atkType][a.details.types[1]] || 1) : 1;
-                                    const total = mult1 * mult2;
-                                    if (total > maxRivalToAlly) maxRivalToAlly = total;
-                                });
+                    <div class="matchup-grid-cards">
+            `;
 
-                                const allyBadge = maxAllyToRival >= 2 ? 'mult-x2' : maxAllyToRival === 0 ? 'mult-x0' : maxAllyToRival < 1 ? 'mult-x05' : 'mult-x1';
-                                const rivalBadge = maxRivalToAlly >= 2 ? 'mult-x2' : maxRivalToAlly === 0 ? 'mult-x0' : maxRivalToAlly < 1 ? 'mult-x05' : 'mult-x1';
+            alliesInField.forEach(a => {
+                rivalsInField.forEach(r => {
+                    // Fortalezas del Aliado sobre el Rival
+                    const strengths = [];
+                    // Debilidades del Aliado frente al Rival
+                    const weaknesses = [];
 
-                                return `
-                                    <div class="speed-tier-item" style="grid-template-columns: 1fr auto 1fr;">
-                                        <div style="display:flex; align-items:center; gap: 0.5rem;">
-                                            <img src="${getPokemonSpriteUrl(a.name)}" width="30" height="30">
-                                            <strong>${capitalize(a.name)}</strong>
-                                            <span class="mult-badge ${allyBadge}">Atq x${maxAllyToRival}</span>
-                                        </div>
-                                        <span class="vs-text" style="font-size: 0.8rem;">VS</span>
-                                        <div style="display:flex; align-items:center; justify-content: flex-end; gap: 0.5rem;">
-                                            <span class="mult-badge ${rivalBadge}">Atq x${maxRivalToAlly}</span>
-                                            <strong>${capitalize(r.name)}</strong>
-                                            <img src="${getPokemonSpriteUrl(r.name)}" width="30" height="30">
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('');
-                        }).join('')}
+                    // Evaluamos ataques STAB del Aliado -> Rival
+                    a.details.types.forEach(aType => {
+                        const m1 = TYPE_CHART[aType][r.details.types[0]] || 1;
+                        const m2 = r.details.types[1] ? (TYPE_CHART[aType][r.details.types[1]] || 1) : 1;
+                        const total = m1 * m2;
+                        const aTInfo = POKEMON_TYPES[aType];
+
+                        if (total >= 2) {
+                            strengths.push(`🎯 Ataque de tipo <strong>${aTInfo.name}</strong> causa daño súper efectivo <strong>(x${total})</strong> a ${capitalize(r.name)}.`);
+                        } else if (total === 0) {
+                            weaknesses.push(`🛡️ Ataques de tipo <strong>${aTInfo.name}</strong> no tienen efecto <strong>(x0)</strong> contra ${capitalize(r.name)}.`);
+                        } else if (total < 1) {
+                            weaknesses.push(`⚠️ Ataques de tipo <strong>${aTInfo.name}</strong> son poco efectivos <strong>(x${total})</strong> contra ${capitalize(r.name)}.`);
+                        }
+                    });
+
+                    // Evaluamos ataques STAB del Rival -> Aliado
+                    r.details.types.forEach(rType => {
+                        const m1 = TYPE_CHART[rType][a.details.types[0]] || 1;
+                        const m2 = a.details.types[1] ? (TYPE_CHART[rType][a.details.types[1]] || 1) : 1;
+                        const total = m1 * m2;
+                        const rTInfo = POKEMON_TYPES[rType];
+
+                        if (total >= 2) {
+                            weaknesses.push(`🚨 Amenaza: ${capitalize(r.name)} te ataca con tipo <strong>${rTInfo.name}</strong> súper efectivo <strong>(x${total})</strong>.`);
+                        } else if (total === 0) {
+                            strengths.push(` Inmunidad: Eres inmune <strong>(x0)</strong> a los ataques tipo <strong>${rTInfo.name}</strong> de ${capitalize(r.name)}.`);
+                        } else if (total < 1) {
+                            strengths.push(` Resistencia: Resistes <strong>(x${total})</strong> los ataques tipo <strong>${rTInfo.name}</strong> de ${capitalize(r.name)}.`);
+                        }
+                    });
+
+                    html += `
+                        <div class="matchup-card strength-card">
+                            <h4 class="matchup-card-title">
+                                <img src="${getPokemonSpriteUrl(a.name)}" width="24" height="24">
+                                ${capitalize(a.name)} - Fortalezas vs ${capitalize(r.name)}
+                            </h4>
+                            ${strengths.length > 0
+                                ? strengths.map(s => `<div class="matchup-item">${s}</div>`).join('')
+                                : '<div class="matchup-item" style="color: var(--text-muted); font-style: italic;">Sin ventajas directas de tipo.</div>'}
+                        </div>
+
+                        <div class="matchup-card weakness-card">
+                            <h4 class="matchup-card-title">
+                                <img src="${getPokemonSpriteUrl(a.name)}" width="24" height="24">
+                                ${capitalize(a.name)} - Debilidades vs ${capitalize(r.name)}
+                            </h4>
+                            ${weaknesses.length > 0
+                                ? weaknesses.map(w => `<div class="matchup-item">${w}</div>`).join('')
+                                : '<div class="matchup-item" style="color: var(--text-muted); font-style: italic;">Sin amenazas ni desventajas directas de tipo.</div>'}
+                        </div>
+                    `;
+                });
+            });
+
+            html += `
                     </div>
                 </div>
             `;
