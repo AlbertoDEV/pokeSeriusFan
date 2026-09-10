@@ -1465,11 +1465,98 @@ body {
     border: 1px solid var(--card-border);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
+    cursor: pointer;
+    font-family: var(--font-sans);
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.ability-tag:hover {
+    border-color: var(--pokemon-yellow);
+    background-color: rgba(255, 203, 5, 0.1);
 }
 
 .ability-tag.hidden-ability {
     border-color: var(--accent-gold);
     color: var(--accent-gold);
+}
+
+.ability-detail-box {
+    margin-top: 0.75rem;
+    padding: 0.85rem 1rem;
+    background-color: var(--bg-dark);
+    border: 1px solid var(--pokemon-yellow);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.ability-detail-box.hidden {
+    display: none !important;
+}
+
+.ability-detail-title {
+    font-size: 0.9rem;
+    color: var(--pokemon-yellow);
+    margin-bottom: 0.3rem;
+}
+
+.ability-original-name {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: normal;
+}
+
+.ability-detail-text {
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* Estilos adicionales para tabla de movimientos interactiva */
+.move-row {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.move-row:hover {
+    background-color: rgba(42, 117, 211, 0.1) !important;
+}
+
+.move-row.expanded {
+    background-color: rgba(255, 203, 5, 0.08) !important;
+}
+
+.move-title-es {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.move-title-en {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.move-detail-row td {
+    padding: 0 !important;
+    border-bottom: 1px solid var(--card-border) !important;
+}
+
+.move-detail-content {
+    padding: 0.75rem 1rem;
+    background-color: rgba(18, 20, 29, 0.95);
+    border-left: 3px solid var(--pokemon-yellow);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.move-detail-row.hidden {
+    display: none !important;
 }
 
 .defensive-groups {
